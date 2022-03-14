@@ -18,18 +18,12 @@
 #define CVPLOT_HEADER_ONLY
 #include <CvPlot/cvplot.h>
 #define WINDOW_NAME "HDR"
-int SAMPLE_N = 70;
 
 #define Zfunc(img,COLOR,row,col) ((img).at<Vec3b>((row),(col))[(COLOR)])
 //#define Wfunc(val) (val < 128.0f ? val+1.0f:256.0f-val)
 #define Wfunc(val) (1.0f - ((float)abs(val-127)/127.0f))
 using namespace cv;
 
-// Traverse check
-bool inside(int r, int c, int rows, int cols)
-{
-    return r >= 0 && r < rows&& c >= 0 && c < cols;
-}
 int main() {
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     std::string image_paths[] = {
@@ -120,7 +114,7 @@ int main() {
         std::vector<float> resultG,x_index;
         for (int i = 0; i < 256; i++) {
             //Gfunc[color][i] = x[color].coeff(i);
-            Gfunc[color][i] = exp(x[color](i));
+            Gfunc[color][i] = exp(x[color].coeff(i));
             x_index.push_back(i);
         }
         
