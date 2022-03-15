@@ -36,6 +36,16 @@ int main() {
         1.0f/3.0f,0.25f,1.0f/60.0f,1.0f/80.0f,1.0f/320.0f,1.0f/400.0f,
         1.0f/1000.0f
     };
+
+    //std::string image_paths[] = {
+    //"./home/img01.jpg","./home/img02.jpg","./home/img03.jpg","./home/img04.jpg","./home/img05.jpg","./home/img06.jpg",
+    //"./home/img07.jpg","./home/img08.jpg","./home/img09.jpg","./home/img10.jpg"
+    //};
+    //float exposure_times[] = {
+    //    1.0f/6.0f,1.0f/10.0f,1.0f/15.0f,1.0f/25.0f,1.0f/40.0f,1.0f/60.0f,
+    //    1.0f/100.0f,1.0f/160.0f,1.0f/250.0f,1.0f/400.0f
+    //};
+
     int image_count = sizeof(exposure_times) / sizeof(exposure_times[0]); // P   
     Mat* images = new Mat[image_count];
 
@@ -45,6 +55,7 @@ int main() {
     for (int i = 0; i < image_count; i++) {
         images[i] = imread(image_paths[i],1);
         resize(images[i], images_sample[i], Size(images[i].cols / scale_down, images[i].rows / scale_down));
+        //resize(images[i], images_sample[i], Size(12,16));
         //cv::imshow(std::to_string(i), images[i]);
     }
 
@@ -54,7 +65,7 @@ int main() {
     int col_count = images_sample[0].cols;
 
     int n = 256;
-    float l = 40.0f;
+    float l = 30;
     std::cout << pixel_count * image_count + n + 1 << std::endl;
     std::cout << row_count << ' ' << col_count << std::endl;
 
@@ -63,12 +74,15 @@ int main() {
     Eigen::VectorXf b(A.rows());
 
 
-
     Eigen::VectorXf x[3];
     float Gfunc[3][256];
+    float logG[3][256];
     Mat HDR = Mat::zeros(images[0].size(), CV_32FC3);
+    Mat HDR_radiance = Mat::zeros(images[0].size(), CV_32FC3);
     //Eigen::VectorXf x(n+ pixel_count);
     auto axes = CvPlot::makePlotAxes();
+
+    bool show_log = true;
     #pragma omp parallel for
     for (int color = 0; color < 3; color++) {
         A.setZero();
@@ -111,20 +125,34 @@ int main() {
         //Mat x;
         //solve(A, B, x, DECOMP_SVD); // Pseudo Inverse
 
-        std::vector<float> resultG,x_index;
+        std::vector<float> x_index;
         for (int i = 0; i < 256; i++) {
-            //Gfunc[color][i] = x[color].coeff(i);
+            //logG.push_back(x[color].coeff(i));
+            logG[color][i] = (x[color].coeff(i));
             Gfunc[color][i] = exp(x[color].coeff(i));
             x_index.push_back(i);
         }
         
-        switch (color)
-        {
-        case 0:axes.create<CvPlot::Series>(x_index, std::vector<float>(std::begin(Gfunc[color]), std::end(Gfunc[color])), "-r"); break;
-        case 1:axes.create<CvPlot::Series>(x_index, std::vector<float>(std::begin(Gfunc[color]), std::end(Gfunc[color])), "-g"); break;
-        case 2:axes.create<CvPlot::Series>(x_index, std::vector<float>(std::begin(Gfunc[color]), std::end(Gfunc[color])), "-b"); break;
-        default:
-            break;
+        
+        if (!show_log) {
+            switch (color)
+            {
+            case 0:axes.create<CvPlot::Series>(x_index, std::vector<float>(std::begin(Gfunc[color]), std::end(Gfunc[color])), "-b"); break;
+            case 1:axes.create<CvPlot::Series>(x_index, std::vector<float>(std::begin(Gfunc[color]), std::end(Gfunc[color])), "-g"); break;
+            case 2:axes.create<CvPlot::Series>(x_index, std::vector<float>(std::begin(Gfunc[color]), std::end(Gfunc[color])), "-r"); break;
+            default:
+                break;
+            }
+        }
+        else {
+            switch (color)
+            {
+            case 0:axes.create<CvPlot::Series>(x_index, std::vector<float>(std::begin(logG[color]), std::end(logG[color])), "-b"); break;
+            case 1:axes.create<CvPlot::Series>(x_index, std::vector<float>(std::begin(logG[color]), std::end(logG[color])), "-g"); break;
+            case 2:axes.create<CvPlot::Series>(x_index, std::vector<float>(std::begin(logG[color]), std::end(logG[color])), "-r"); break;
+            default:
+                break;
+            }
         }
 
 
@@ -151,10 +179,18 @@ int main() {
                 }
 
                 HDR.at<Vec3f>(row, col)(color) = exp(log_sum / weight_sum);
+                //HDR_radiance.at<Vec3f>(row, col)(color) = log_sum / weight_sum;
+                //std::cout << HDR.at<Vec3f>(row, col)(color) << "   " << HDR_radiance.at<Vec3f>(row, col)(color) <<'\n';
             }
         }
     }
     imshow("HDR", HDR);
+   
+    cvtColor(HDR, HDR_radiance, COLOR_BGR2GRAY);
+    HDR_radiance.convertTo(HDR_radiance,CV_8U,255.0f);
+    applyColorMap(HDR_radiance, HDR_radiance, COLORMAP_JET);
+    imshow("HDR radiance", HDR_radiance);
+    
     imwrite("HDR_Deb_image.exr", HDR);
 
     cv::waitKey();
