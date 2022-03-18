@@ -18,12 +18,18 @@
     <ClCompile Include="main.cpp">
       <Filter>資源檔</Filter>
     </ClCompile>
+    <ClCompile Include="tinyexpr.c">
+      <Filter>資源檔</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cvui.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="matplotlibcpp.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="tinyexpr.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>

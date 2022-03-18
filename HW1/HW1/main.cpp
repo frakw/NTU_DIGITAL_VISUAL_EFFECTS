@@ -1,41 +1,55 @@
 ﻿//#define EIGEN_USE_MKL_ALL // Determine if use MKL
 //#define EIGEN_VECTORIZE_SSE4_2
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <cmath>
+#include <chrono>
+
+#include <opencv2/opencv.hpp>
+#include <opencv2/core/eigen.hpp>
+
 #define _USE_MATH_DEFINES
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <Eigen/SparseQR>
-#include <opencv2/opencv.hpp>
-#include <opencv2/core/eigen.hpp>
 
 #define CVUI_IMPLEMENTATION
 #include "cvui.h"
-#include <iostream>
-#include <string>
-#include <vector>
-#include <cmath>
-#include <chrono>
+#include "tinyexpr.h"
 #define CVPLOT_HEADER_ONLY
 #include <CvPlot/cvplot.h>
+
 #define WINDOW_NAME "HDR"
 
 #define Zfunc(img,COLOR,row,col) ((img).at<Vec3b>((row),(col))[(COLOR)])
 //#define Wfunc(val) (val < 128.0f ? val+1.0f:256.0f-val)
 #define Wfunc(val) (1.0f - ((float)abs(val-127)/127.0f))
+
+
+//#define opencv_SVD
+//#define eigen_jacobi
+#define eigen_SparseQR
+
+#define fixed_sample
 using namespace cv;
 
 int main() {
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    std::string image_paths[] = {
-        "./exposures/img01.jpg","./exposures/img02.jpg","./exposures/img03.jpg","./exposures/img04.jpg","./exposures/img05.jpg","./exposures/img06.jpg",
-        "./exposures/img07.jpg","./exposures/img08.jpg","./exposures/img09.jpg","./exposures/img10.jpg","./exposures/img11.jpg","./exposures/img12.jpg",
-        "./exposures/img13.jpg"
-    };
-    float exposure_times[] = {
-        13.0f,10.0f,4.0f,3.2f,1.0f,0.8f,
-        1.0f/3.0f,0.25f,1.0f/60.0f,1.0f/80.0f,1.0f/320.0f,1.0f/400.0f,
-        1.0f/1000.0f
-    };
+
+    //std::string image_paths[] = {
+    //    "./exposures/img01.jpg","./exposures/img02.jpg","./exposures/img03.jpg","./exposures/img04.jpg","./exposures/img05.jpg","./exposures/img06.jpg",
+    //    "./exposures/img07.jpg","./exposures/img08.jpg","./exposures/img09.jpg","./exposures/img10.jpg","./exposures/img11.jpg","./exposures/img12.jpg",
+    //    "./exposures/img13.jpg"
+    //};
+    //float exposure_times[] = {
+    //    13.0f,10.0f,4.0f,3.2f,1.0f,0.8f,
+    //    1.0f/3.0f,0.25f,1.0f/60.0f,1.0f/80.0f,1.0f/320.0f,1.0f/400.0f,
+    //    1.0f/1000.0f
+    //};
 
     //std::string image_paths[] = {
     //"./home/img01.jpg","./home/img02.jpg","./home/img03.jpg","./home/img04.jpg","./home/img05.jpg","./home/img06.jpg",
@@ -46,16 +60,45 @@ int main() {
     //    1.0f/100.0f,1.0f/160.0f,1.0f/250.0f,1.0f/400.0f
     //};
 
-    int image_count = sizeof(exposure_times) / sizeof(exposure_times[0]); // P   
+    std::string folder = "./balcony1/";
+    int image_count = 10;
+    std::string* image_paths = new std::string[image_count];
+    float* exposure_times = new float[image_count];
+    std::fstream time_file(folder + "time.data");
+    for (int i = 1; i <= image_count; i++) {
+        std::string path = folder;
+        std::string time;
+        if (i < 10) path += "img0";
+        else path += "img";
+
+        path += std::to_string(i) + ".jpg";
+        image_paths[i - 1] = path;
+        time_file >> time;
+        std::cout << time << '\n';
+        exposure_times[i - 1] = te_interp(time.c_str(),0);
+        std::cout << exposure_times[i - 1] << '\n';
+
+    }
+    //return 0;
+
+    //int image_count = sizeof(exposure_times) / sizeof(exposure_times[0]); // P   
     Mat* images = new Mat[image_count];
 
 
     Mat* images_sample = new Mat[image_count];
-    int scale_down = 50;
+   
     for (int i = 0; i < image_count; i++) {
+
         images[i] = imread(image_paths[i],1);
+#ifdef fixed_sample
+        resize(images[i], images_sample[i], Size(12, 16));
+#else
+        int scale_down = 100;
         resize(images[i], images_sample[i], Size(images[i].cols / scale_down, images[i].rows / scale_down));
-        //resize(images[i], images_sample[i], Size(12,16));
+#endif // fixed_sample
+
+        
+        
         //cv::imshow(std::to_string(i), images[i]);
     }
 
@@ -69,12 +112,26 @@ int main() {
     std::cout << pixel_count * image_count + n + 1 << std::endl;
     std::cout << row_count << ' ' << col_count << std::endl;
 
-    Eigen::SparseMatrix<float> A(pixel_count * image_count + n + 1, n + pixel_count);
-    //Eigen::MatrixXf A(pixel_count * image_count + n + 1, n + pixel_count);
+#ifdef opencv_SVD
+    Mat x[3];
+#elif defined(eigen_jacobi)
+    Eigen::MatrixXf A(pixel_count * image_count + n + 1, n + pixel_count);
     Eigen::VectorXf b(A.rows());
-
-
     Eigen::VectorXf x[3];
+#elif defined(eigen_SparseQR)
+    Eigen::SparseMatrix<float> A(pixel_count * image_count + n + 1, n + pixel_count);    
+    Eigen::VectorXf b(A.rows());
+    Eigen::VectorXf x[3];
+#endif // !opencv_SVD
+
+
+#ifdef opencv_SVD
+#else
+#endif // !opencv_SVD
+
+
+
+    
     float Gfunc[3][256];
     float logG[3][256];
     Mat HDR = Mat::zeros(images[0].size(), CV_32FC3);
@@ -85,8 +142,13 @@ int main() {
     bool show_log = true;
     #pragma omp parallel for
     for (int color = 0; color < 3; color++) {
+#ifdef opencv_SVD
+        Mat A = Mat::zeros(pixel_count * image_count + n + 1, n + pixel_count, CV_32F);
+        Mat b = Mat::zeros(A.rows, 1, CV_32F);
+#else
         A.setZero();
         b.setZero();
+#endif
 
         int k = 0;
         int i = 0;
@@ -96,40 +158,73 @@ int main() {
                 for (int img_index = 0; img_index < image_count; img_index++) {
                     int z_val = Zfunc(images_sample[img_index], color, row, col);
                     float wij = Wfunc(z_val);
+
+#ifdef opencv_SVD
+                    A.at<float>(k, z_val) = wij;
+                    A.at<float>(k, n + i) = -wij;
+                    b.at<float>(k, 0) = wij * log(exposure_times[img_index]);
+#else
                     A.coeffRef(k, z_val) = wij;
                     A.coeffRef(k, n + i) = -wij;
                     b.coeffRef(k) = wij * log(exposure_times[img_index]);
+#endif // !opencv_SVD
+
                     k = k + 1;
                 }
                 i++;
             }
         }
+
+#ifdef opencv_SVD
+        A.at<float>(k, 128) = 1.0f;
+#else
         A.coeffRef(k, 128) = 1.0f;
+#endif // !opencv_SVD
+        
         k = k + 1;
         for (int i = 0; i < n - 2; i++) {
             float lW = l * Wfunc(i+1);
+
+#ifdef opencv_SVD
+            A.at<float>(k, i) = lW;
+            A.at<float>(k, i +1) = -2 * lW;
+            A.at<float>(k, i + 2) = lW;
+#else
             A.coeffRef(k, i) = lW;
             A.coeffRef(k, i + 1) = -2 * lW;
             A.coeffRef(k, i + 2) = lW;
+#endif // !opencv_SVD
+
             k = k + 1;
         }
 
 
 
         std::cout << "Ax=b solving..." << std::endl;
+
+
+        //x[color] = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+#ifdef opencv_SVD
+        solve(A, b, x[color], DECOMP_SVD); // Pseudo Inverse
+#elif defined(eigen_jacobi)
+        x[color] = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+#elif defined(eigen_SparseQR)
         Eigen::LeastSquaresConjugateGradient<Eigen::SparseMatrix<float>> lscg;
         lscg.compute(A);
         x[color] = lscg.solve(b);
+#endif // !opencv_SVD
 
-        //x[color] = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
-        //Mat x;
-        //solve(A, B, x, DECOMP_SVD); // Pseudo Inverse
 
         std::vector<float> x_index;
         for (int i = 0; i < 256; i++) {
-            //logG.push_back(x[color].coeff(i));
+#ifdef opencv_SVD
+            logG[color][i] = (x[color].at<float>(i));
+            Gfunc[color][i] = exp(x[color].at<float>(i));
+#else
             logG[color][i] = (x[color].coeff(i));
             Gfunc[color][i] = exp(x[color].coeff(i));
+#endif // !opencv_SVD
+
             x_index.push_back(i);
         }
         
@@ -160,8 +255,7 @@ int main() {
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 
-    CvPlot::show("response curve", axes);
-
+    //imshow("response curve", axes.render());
     for (int color = 0; color < 3; color++)
     {
         for (int row = 0; row < images[0].rows; row++)
@@ -192,7 +286,7 @@ int main() {
     imshow("HDR radiance", HDR_radiance);
     
     imwrite("HDR_Deb_image.exr", HDR);
-
+    std::cout << "finish";
     cv::waitKey();
     return 0;
 }
