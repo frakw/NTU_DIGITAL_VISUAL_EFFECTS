@@ -35,7 +35,257 @@
 #define eigen_SparseQR
 
 #define fixed_sample
+using namespace std;
 using namespace cv;
+
+void MTB(cv::Mat& inputArray, cv::Mat& outputArray)
+{
+    int color_count[256] = { 0 };
+    int i, j;
+    cv::Mat temp;
+    if (inputArray.type() == CV_8UC3)
+    {
+        cv::cvtColor(inputArray, temp, cv::COLOR_BGR2GRAY);
+    }
+    else
+    {
+        temp = inputArray.clone();
+    }
+
+    //#pragma omp parallel for private(i, j)
+    for (j = 0; j < inputArray.rows; j++)
+    {
+        for (i = 0; i < inputArray.cols; i++)
+        {
+            color_count[temp.at<uchar>(j, i)]++;
+        }
+    }
+
+    int threshold_total = 0;
+    double thresh;
+    for (j = 0; j < inputArray.rows; j++)
+    {
+        threshold_total += color_count[j];
+
+        if (threshold_total >= (temp.cols * temp.rows) / 2)
+        {
+            thresh = j;
+            break;
+        }
+    }
+
+    cv::Mat&& dest = cv::Mat::zeros(temp.rows, temp.cols, CV_8UC1);
+#pragma omp parallel for private(i, j)
+    for (j = 0; j < inputArray.rows; j++)
+    {
+        for (i = 0; i < inputArray.cols; i++)
+        {
+            temp.at<uchar>(j, i) > thresh ? dest.at<uchar>(j, i) = 255 : dest.at<uchar>(j, i) = 0;
+        }
+    }
+    outputArray.release();
+    outputArray = dest.clone();
+    temp.release();
+}
+
+void MTBA(std::vector<cv::Mat>& inputArrays, std::vector<cv::Mat>& outputArrays)
+{
+    cv::Mat sample = inputArrays[0].clone();
+    MTB(sample, sample);
+    std::vector<int> move_length_x(inputArrays.size(), 0);
+    std::vector<int> move_length_y(inputArrays.size(), 0);
+
+    //cut the noise frome the base (first pic)
+
+
+    for (int j = 1; j < inputArrays.size(); j++)
+    {
+        cv::Mat temp1 = inputArrays[j].clone();
+        MTB(temp1, temp1);
+        for (int i = 5; i >= 0; i--)
+        {
+            cv::Mat temp_samp = sample.clone();
+            cv::Mat temp = temp1.clone();
+
+            cv::Mat sampimg = sample.clone();
+            cv::Mat otherimg = temp1.clone();
+
+            cv::Mat samp = temp_samp.clone();
+            cv::Mat other = temp1.clone();
+            cv::resize(samp, samp, cv::Size((int)(sample.cols / pow(2, i + 1)), (int)(sample.rows / pow(2, i + 1))));
+            cv::resize(samp, samp, cv::Size((int)(sample.cols / pow(2, i)), (int)(sample.rows / pow(2, i))));
+            cv::resize(other, other, cv::Size((int)(sample.cols / pow(2, i + 1)), (int)(sample.rows / pow(2, i + 1))));
+            cv::resize(other, other, cv::Size((int)(sample.cols / pow(2, i)), (int)(sample.rows / pow(2, i))));
+
+            //            cv::imshow("samp",samp);
+            //            cv::imshow("temp_samp",temp_samp);
+                        //cv::imshow("temp",temp);
+
+            for (int b = 0; b < samp.rows; b++)
+            {
+                for (int a = 0; a < samp.cols; a++)
+                {
+                    if (samp.at<uchar>(b, a) != sampimg.at<uchar>(b, a))
+                    {
+                        temp_samp.at<uchar>(b, a) = 0;
+                    }
+                    if (other.at<uchar>(b, a) != otherimg.at<uchar>(b, a))
+                    {
+                        temp.at<uchar>(b, a) = 0;
+                    }
+                    if (sampimg.at<uchar>(b, a) != otherimg.at<uchar>(b, a))
+                    {
+                        temp.at<uchar>(b, a) = 0;
+                    }
+
+                }
+            }
+            //            cv::imshow("sample",sample);
+            //            cv::imshow("samp",samp);
+            //            cv::imshow("temp_samp",temp_samp);
+            //            cv::imshow("temp",temp);
+
+                        //cv::resize(temp, temp, cv::Size((int)(sample.cols / pow(2, i)), (int)(sample.rows / pow(2, i))));
+                        //cv::resize(temp_samp, temp_samp, cv::Size((int)(sample.cols / pow(2, i)), (int)(sample.rows / pow(2, i))));
+
+            double total[9] = { 0 };
+
+            for (int b = 0; b < temp_samp.rows; b++)
+            {
+                for (int a = 0; a < temp_samp.cols; a++)
+                {
+                    int count = 0;
+                    for (int y = -1; y <= 1; y++)
+                    {
+                        for (int x = -1; x <= 1; x++)
+                        {
+                            if (a + move_length_x[j] + x > 0 && a + move_length_x[j] + x < temp.cols && b + move_length_y[j] + y > 0 && b + move_length_y[j] + y < temp.rows)
+                            {
+                                if ((int)temp_samp.at<uchar>(b, a) != (int)temp.at<uchar>(b + move_length_y[j] + y, a + move_length_x[j] + x))
+                                    total[count]++;
+                            }
+                            count++;
+                        }
+                    }
+                }
+            }
+
+            int a = 0;
+            //            qDebug () << total[0];
+            for (int b = 1; b < 9; b++)
+            {
+                if (total[a] > total[b])
+                {
+                    a = b;
+                }
+                //                qDebug () << total[b];
+            }
+
+            //            qDebug() << "=========";
+            if (total[a] * 1.5 >= total[4])
+            {
+                a = 4;
+            }
+
+            //            qDebug () << "A:" << a;
+            //            qDebug () << "==========";
+
+
+            switch (a)
+            {
+            case 0:
+                move_length_y[j] = (move_length_y[j] - 1) * 2;
+                move_length_x[j] = (move_length_x[j] - 1) * 2;
+                break;
+            case 1:
+                move_length_y[j] = (move_length_y[j] - 1) * 2;
+                break;
+            case 2:
+                move_length_y[j] = (move_length_y[j] - 1) * 2;
+                move_length_x[j] = (move_length_x[j] + 1) * 2;
+                break;
+            case 3:
+                move_length_x[j] = (move_length_x[j] - 1) * 2;
+                break;
+            case 4:
+                break;
+            case 5:
+                move_length_x[j] = (move_length_x[j] + 1) * 2;
+                break;
+            case 6:
+                move_length_y[j] = (move_length_y[j] + 1) * 2;
+                move_length_x[j] = (move_length_x[j] - 1) * 2;
+                break;
+            case 7:
+                move_length_y[j] = (move_length_y[j] + 1) * 2;
+                break;
+            case 8:
+                move_length_y[j] = (move_length_y[j] + 1) * 2;
+                move_length_x[j] = (move_length_x[j] + 1) * 2;
+                break;
+            }
+            //            qDebug() << move_length_x[j] << " " << move_length_y[j];
+            //            qDebug() << "@@@@@@@";
+        }
+
+
+    }
+
+    int minX = move_length_x[0], maxX = move_length_x[0];
+    int minY = move_length_y[0], maxY = move_length_y[0];
+
+    for (int i = 1; i < inputArrays.size(); i++)
+    {
+        if (minX > move_length_x[i]) { minX = move_length_x[i]; }
+        if (maxX < move_length_x[i]) { maxX = move_length_x[i]; }
+        if (minY > move_length_y[i]) { minY = move_length_y[i]; }
+        if (maxY < move_length_y[i]) { maxY = move_length_y[i]; }
+    }
+    std::vector<cv::Mat> tempdest(inputArrays.size());
+
+    int a, j, i, k;
+#pragma parallel for private(a, j, i, k)
+    for (a = 0; a < inputArrays.size(); a++)
+    {
+        cv::Mat&& dest = cv::Mat::zeros(sample.rows + abs(minY) + abs(maxY), sample.cols + abs(minX) + abs(maxX), CV_8UC3);
+        for (j = 0; j < inputArrays[a].rows; j++)
+        {
+            for (i = 0; i < inputArrays[a].cols; i++)
+            {
+                for (k = 0; k < 3; k++)
+                {
+                    dest.at<cv::Vec3b>(j + abs(minY) + move_length_y[a], i + abs(minX) + move_length_x[a])[k] = inputArrays[a].at<cv::Vec3b>(j, i)[k];
+                }
+            }
+        }
+        tempdest[a] = dest.clone();
+    }
+
+    cv::Mat&& dest1 = cv::Mat::zeros(sample.rows + abs(minY) + abs(maxY), sample.cols + abs(minX) + abs(maxX), CV_8UC3);
+
+    int tmp = 0;
+    //#pragma parallel for private(a, j, i, k) firstprivate(tmp)
+    for (j = 0; j < tempdest[0].rows; j++)
+    {
+        for (i = 0; i < tempdest[0].cols; i++)
+        {
+            for (k = 0; k < 3; k++)
+            {
+                tmp = 0;
+                for (a = 0; a < tempdest.size(); a++)
+                {
+                    tmp += tempdest[a].at<cv::Vec3b>(j, i)[k];
+                }
+
+                dest1.at<cv::Vec3b>(j, i)[k] = tmp / tempdest.size();
+            }
+        }
+    }
+
+    outputArrays.clear();
+    outputArrays = tempdest;
+}
+
 
 int main() {
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -60,8 +310,8 @@ int main() {
     //    1.0f/100.0f,1.0f/160.0f,1.0f/250.0f,1.0f/400.0f
     //};
 
-    std::string folder = "./Hdr/";
-    int image_count = 10;
+    std::string folder = "./jingtong1/";
+    int image_count = 6;
     std::string* image_paths = new std::string[image_count];
     float* exposure_times = new float[image_count];
     std::fstream time_file(folder + "time.data");
@@ -82,8 +332,16 @@ int main() {
     //return 0;
 
     //int image_count = sizeof(exposure_times) / sizeof(exposure_times[0]); // P   
-    Mat* images = new Mat[image_count];
-
+    //Mat* images = new Mat[image_count];
+    std::vector<Mat> images;
+   
+    for (int i = 0; i < image_count; i++) {
+        images.push_back(imread(image_paths[i], 1));   
+    }
+    bool MTB_open = false;
+    if (MTB_open) {
+        MTBA(images, images);
+    }
 
     Mat* images_sample = new Mat[image_count];
    
@@ -101,7 +359,7 @@ int main() {
         
         //cv::imshow(std::to_string(i), images[i]);
     }
-
+    int origin_pixel_count = images[0].rows * images[0].cols;
 
     int pixel_count = images_sample[0].rows * images_sample[0].cols;// N
     int row_count = images_sample[0].rows;
@@ -162,7 +420,7 @@ int main() {
 #ifdef opencv_SVD
                     A.at<float>(k, z_val) = wij;
                     A.at<float>(k, n + i) = -wij;
-                    b.at<float>(k, 0) = wij * log(exposure_times[img_index]);
+                    b.at<float>(k, 0) = wij * log(exposure_times[img_index]) / log(2.718281828);
 #else
                     A.coeffRef(k, z_val) = wij;
                     A.coeffRef(k, n + i) = -wij;
@@ -271,10 +529,16 @@ int main() {
                     log_sum += Wfunc(pixel_val) * log(Gfunc[color][pixel_val] / exposure_times[img_index]);
                     weight_sum += Wfunc(pixel_val);
                 }
-
-                HDR.at<Vec3f>(row, col)(color) = exp(log_sum / weight_sum);
+                float result = exp(log_sum / weight_sum);
+                if (isinf(result)) {
+                    HDR.at<Vec3f>(row, col)(color) = 0.0f;
+                }
+                else {
+                    HDR.at<Vec3f>(row, col)(color) = result;
+                }
                 //HDR_radiance.at<Vec3f>(row, col)(color) = log_sum / weight_sum;
                 //std::cout << HDR.at<Vec3f>(row, col)(color) << "   " << HDR_radiance.at<Vec3f>(row, col)(color) <<'\n';
+                //std::cout << HDR.at<Vec3f>(row, col)(color) << std::endl;
             }
         }
     }
@@ -286,6 +550,48 @@ int main() {
     imshow("HDR radiance", HDR_radiance);
     
     imwrite("HDR_Deb_image.exr", HDR);
+
+    //tonemapping/////////
+
+    Mat intensity(HDR.size(), CV_32FC1);
+    double total_brightness = 0.0f;
+    for (int i = 0; i < intensity.rows; i++) {
+        for (int j = 0; j < intensity.cols; j++) {
+            double lw = 0.0722 * HDR.at<Vec3f>(i, j)[0] + 0.7152f * HDR.at<Vec3f>(i, j)[1] + 0.2126f * HDR.at<Vec3f>(i, j)[2]; //計算亮度
+            if (isnan(lw)) {
+                intensity.at<float>(i, j) = 0.0f;
+                continue;
+            }
+            intensity.at<float>(i, j) = lw;
+            total_brightness += log(lw + 0.001f);
+        }
+    }
+    double lw_average = exp(total_brightness / (double)origin_pixel_count);
+    Mat tonemapping(HDR.size(), CV_32FC3);
+    Mat tonemapping_8U(HDR.size(), CV_8UC3);
+    for (int i = 0; i < intensity.rows; i++) {
+        for (int j = 0; j < intensity.cols; j++) {
+            float a = 0.36f;
+            float lw = intensity.at<float>(i, j);
+            float lm = (a * lw) / lw_average;
+            float l_white = 3.0f;
+            float ld = 0.0f;
+            if (lm >= l_white) {
+                ld = 1.0f;
+            }
+            else {
+                ld = (lm * (1.0f + lm / (l_white * l_white))) / (1.0f + lm);
+            }
+            tonemapping.at<Vec3f>(i, j)[0] = saturate_cast<float>(HDR.at<cv::Vec3f>(i,j)[0] * (ld / lw));
+            tonemapping_8U.at<Vec3b>(i, j)[0] = saturate_cast<uchar>(HDR.at<cv::Vec3f>(i, j)[0] * (ld *255.0f / lw));
+            tonemapping.at<Vec3f>(i, j)[1] = saturate_cast<float>(HDR.at<cv::Vec3f>(i, j)[1] * (ld / lw));
+            tonemapping_8U.at<Vec3b>(i, j)[1] = saturate_cast<uchar>(HDR.at<cv::Vec3f>(i, j)[1] * (ld * 255.0f / lw));
+            tonemapping.at<Vec3f>(i, j)[2] = saturate_cast<float>(HDR.at<cv::Vec3f>(i, j)[2] * (ld / lw));
+            tonemapping_8U.at<Vec3b>(i, j)[2] = saturate_cast<uchar>(HDR.at<cv::Vec3f>(i, j)[2] * (ld * 255.0f / lw));
+        }
+    }
+    imshow("After tonemapping", tonemapping);
+    imwrite("tonemapping.png", tonemapping_8U);
     std::cout << "finish";
     cv::waitKey();
     return 0;
