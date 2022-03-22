@@ -8,14 +8,14 @@
 #include <cmath>
 #include <chrono>
 
-#include <opencv2/opencv.hpp>
-#include <opencv2/core/eigen.hpp>
-
 #define _USE_MATH_DEFINES
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <Eigen/SparseQR>
+
+#include <opencv2/opencv.hpp>
+#include <opencv2/core/eigen.hpp>
 
 #define CVUI_IMPLEMENTATION
 #include "cvui.h"
@@ -60,7 +60,7 @@ int main() {
     //    1.0f/100.0f,1.0f/160.0f,1.0f/250.0f,1.0f/400.0f
     //};
 
-    std::string folder = "./balcony1/";
+    std::string folder = "./Hdr/";
     int image_count = 10;
     std::string* image_paths = new std::string[image_count];
     float* exposure_times = new float[image_count];

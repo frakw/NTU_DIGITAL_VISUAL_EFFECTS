@@ -1,0 +1,1 @@
+High-Dynamic-Range.exe 12 0.25 ./jingtong1/
