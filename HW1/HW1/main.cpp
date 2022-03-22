@@ -310,8 +310,8 @@ int main() {
     //    1.0f/100.0f,1.0f/160.0f,1.0f/250.0f,1.0f/400.0f
     //};
 
-    std::string folder = "./jingtong1/";
-    int image_count = 6;
+    std::string folder = "./home2/";
+    int image_count = 11;
     std::string* image_paths = new std::string[image_count];
     float* exposure_times = new float[image_count];
     std::fstream time_file(folder + "time.data");
@@ -338,7 +338,7 @@ int main() {
     for (int i = 0; i < image_count; i++) {
         images.push_back(imread(image_paths[i], 1));   
     }
-    bool MTB_open = false;
+    bool MTB_open = true;
     if (MTB_open) {
         MTBA(images, images);
     }
