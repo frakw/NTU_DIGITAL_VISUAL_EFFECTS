@@ -7,6 +7,9 @@
 #include <vector>
 #include <cmath>
 #include <chrono>
+#include <limits>
+#include <algorithm>
+#include <iterator>
 
 #define _USE_MATH_DEFINES
 #include <Eigen/Core>
@@ -37,6 +40,7 @@
 #define fixed_sample
 using namespace std;
 using namespace cv;
+
 
 void MTB(cv::Mat& inputArray, cv::Mat& outputArray)
 {
@@ -97,7 +101,7 @@ void MTBA(std::vector<cv::Mat>& inputArrays, std::vector<cv::Mat>& outputArrays)
 
     //cut the noise frome the base (first pic)
 
-
+    cout << "offsets:\n";
     for (int j = 1; j < inputArrays.size(); j++)
     {
         cv::Mat temp1 = inputArrays[j].clone();
@@ -228,9 +232,9 @@ void MTBA(std::vector<cv::Mat>& inputArrays, std::vector<cv::Mat>& outputArrays)
             //            qDebug() << "@@@@@@@";
         }
 
-
+        cout << move_length_x[j] << ' ' << move_length_y[j] << endl;
     }
-
+    cout << "min max\n";
     int minX = move_length_x[0], maxX = move_length_x[0];
     int minY = move_length_y[0], maxY = move_length_y[0];
 
@@ -242,7 +246,7 @@ void MTBA(std::vector<cv::Mat>& inputArrays, std::vector<cv::Mat>& outputArrays)
         if (maxY < move_length_y[i]) { maxY = move_length_y[i]; }
     }
     std::vector<cv::Mat> tempdest(inputArrays.size());
-
+    cout << "x " << minX << ' ' << maxX << " y " << minY << ' ' << maxY << endl;
     int a, j, i, k;
 #pragma parallel for private(a, j, i, k)
     for (a = 0; a < inputArrays.size(); a++)
@@ -286,11 +290,14 @@ void MTBA(std::vector<cv::Mat>& inputArrays, std::vector<cv::Mat>& outputArrays)
     outputArrays = tempdest;
 }
 
+
+
+
 Mat to_bitmap(const Mat& image) {
     Mat gray_img;
     Mat result(image.size(),CV_8UC1);
     cvtColor(image, gray_img, cv::COLOR_BGR2GRAY);
-    int range = 20;
+    int range = 0;
     int center = 127;
     int up_bound = center + range;
     int down_bound = center - range;
@@ -310,20 +317,103 @@ Mat to_bitmap(const Mat& image) {
     return result;
 }
 
-vector<Mat> m_MTB(const vector<Mat>& images) {
-    int middle_index = images.size() / 2;
-    Mat align_standard = to_bitmap(images[middle_index]);
-    vector<Mat> result;
-    
+vector<Mat> MTB(const vector<Mat>& images, int align_image_index = -1) {
+    if (align_image_index == -1) {
+        align_image_index = images.size() / 2;
+    }
+    Mat align_standard = images[align_image_index];
+    int rows = align_standard.rows;
+    int cols = align_standard.cols;
+    vector<Mat> result(images.size());
+    vector<int> x_offsets;
+    vector<int> y_offsets;
+    int dir[9][2] = {
+        {-1,-1},{0,-1},{1,-1},{-1,0},{0,0},{1,0},{-1,1},{0,1},{1,1},
+    };
+    cout << "offsets:\n";
     for (int i = 0; i < images.size(); i++) {
-        if (i == middle_index) continue;
-        Mat align_target = to_bitmap(images[i]);
-        for (int j = 0; j < 5; j++) {
-            
+        if (i == align_image_index) {
+            x_offsets.push_back(0);
+            y_offsets.push_back(0);
+            continue;
+        }
+        Mat align_target = images[i];
+        int x_offset = 0;
+        int y_offset = 0;
+        for (int j = 5; j >= 0; j--) {
+            Mat standard;
+            Mat target;
+            int resize_rows = rows / pow(2, j);
+            int resize_cols = cols / pow(2, j);
+            resize(align_standard, standard, Size(resize_cols, resize_rows));
+            resize(align_target, target, Size(resize_cols, resize_rows));
+            standard = to_bitmap(standard);
+            target = to_bitmap(target);
+            int neighbor_diff_count[9] = { 0 };
+            auto valid_xy = [&](int row, int col)->bool {
+                return (row >= 0) && (row < resize_rows) && (col >= 0) && (col < resize_cols);
+            };
+            for (int k = 0; k < resize_rows; k++) {
+                for (int g = 0; g < resize_cols; g++) {
+                    int index = 0;
+                    for (int y = -1; y <= 1; y++) {
+                        for (int x = -1; x <= 1; x++) {
+                            int row = k + y + y_offset;
+                            int col = g + x + x_offset;
+                            if (valid_xy(row, col)) {
+                                if (target.at<uchar>(row, col) != 2 && standard.at<uchar>(k, g) != 2) {
+                                    if (target.at<uchar>(row, col) != standard.at<uchar>(k, g)) {
+                                        neighbor_diff_count[index]++;
+                                    }
+                                }
+                            }
+                            index++;
+                        }
+                    }
+                }
+            }
+            int min_diff = numeric_limits<int>::max();
+            int min_diff_neighbor = 4;
+            for (int k = 0; k < 9; k++) {
+                if (neighbor_diff_count[k] < min_diff) {
+                    min_diff = neighbor_diff_count[k];
+                    min_diff_neighbor = k;
+                }
+                cout << neighbor_diff_count[k] << ' ';
+            }
+
+            //if (neighbor_diff_count[min_diff_neighbor] < neighbor_diff_count[4] * 1.5f)
+            //{
+            //    min_diff_neighbor = 4;
+            //}
+
+            cout << endl;
+
+            x_offset += dir[min_diff_neighbor][0]; //if (dir[min_diff_neighbor][0] != 0) { x_offset *= 2; }
+            y_offset += dir[min_diff_neighbor][1]; //if (dir[min_diff_neighbor][1] != 0) { y_offset *= 2; }
+
+        }
+        cout << x_offset << ' ' << y_offset << endl;
+        x_offsets.push_back(x_offset);
+        y_offsets.push_back(y_offset);
+    }
+    cout << "min max\n";
+    int min_x_offset = *min_element(x_offsets.begin(), x_offsets.end());
+    int max_x_offset = *max_element(x_offsets.begin(), x_offsets.end());
+    int min_y_offset = *min_element(y_offsets.begin(), y_offsets.end());
+    int max_y_offset = *max_element(y_offsets.begin(), y_offsets.end());
+    cout<<"x " << min_x_offset << ' ' << max_x_offset <<" y " << min_y_offset<<' '<< max_y_offset << endl;
+    cout << "new img rows cols\n";
+    for (int i = 0; i < result.size(); i++) {
+        result[i] = Mat::zeros(rows + abs(min_y_offset) + abs(max_y_offset), cols + abs(min_x_offset) + abs(max_x_offset), CV_8UC3);
+        cout << result[i].rows << ' ' << result[i].cols << endl;
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                result[i].at<Vec3b>(row + abs(min_y_offset) + y_offsets[i], col + abs(min_x_offset) + x_offsets[i]) = images[i].at<Vec3b>(row, col);
+            }
         }
     }
-
-   return result;
+    return result;
 }
 
 
@@ -350,8 +440,8 @@ int main() {
     //    1.0f/100.0f,1.0f/160.0f,1.0f/250.0f,1.0f/400.0f
     //};
 
-    std::string folder = "./home2/";
-    int image_count = 11;
+    std::string folder = "./jingtong1/";
+    int image_count = 10;
     std::string* image_paths = new std::string[image_count];
     float* exposure_times = new float[image_count];
     std::fstream time_file(folder + "time.data");
@@ -364,7 +454,7 @@ int main() {
         path += std::to_string(i) + ".jpg";
         image_paths[i - 1] = path;
         time_file >> time;
-        std::cout << time << '\n';
+        //std::cout << time << '\n';
         exposure_times[i - 1] = te_interp(time.c_str(),0);
         std::cout << exposure_times[i - 1] << '\n';
 
@@ -381,13 +471,18 @@ int main() {
     bool MTB_open = true;
     if (MTB_open) {
         MTBA(images, images);
+        //images = MTB(images);
     }
-
+    for (int i = 0; i < images.size(); i++) 
+    {
+        //imshow("after" + to_string(i), images[i]);
+        //imwrite("after" + to_string(i) +".jpg", images[i]);
+    }
+    //waitKey();
+    //return 0;
     Mat* images_sample = new Mat[image_count];
    
     for (int i = 0; i < image_count; i++) {
-
-        images[i] = imread(image_paths[i],1);
 #ifdef fixed_sample
         resize(images[i], images_sample[i], Size(12, 16));
 #else
@@ -587,7 +682,7 @@ int main() {
     cvtColor(HDR, HDR_radiance, COLOR_BGR2GRAY);
     HDR_radiance.convertTo(HDR_radiance,CV_8U,255.0f);
     applyColorMap(HDR_radiance, HDR_radiance, COLORMAP_JET);
-    imshow("HDR radiance", HDR_radiance);
+    //imshow("HDR radiance", HDR_radiance);
     
     imwrite("HDR_Deb_image.exr", HDR);
 
@@ -630,7 +725,17 @@ int main() {
             tonemapping_8U.at<Vec3b>(i, j)[2] = saturate_cast<uchar>(HDR.at<cv::Vec3f>(i, j)[2] * (ld * 255.0f / lw));
         }
     }
+    //Mat ldr;
+    //Ptr<Tonemap> tonemap = createTonemap(2.2f);
+    //tonemap->process(HDR, ldr);
+    //imshow("opencv tonemapping", ldr);
+
+
+    cout << "final img rows cols\n";
+
+    cout << tonemapping.rows << ' ' << tonemapping.cols << endl;
     imshow("After tonemapping", tonemapping);
+    
     imwrite("tonemapping.png", tonemapping_8U);
     std::cout << "finish";
     cv::waitKey();
