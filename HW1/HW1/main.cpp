@@ -286,6 +286,46 @@ void MTBA(std::vector<cv::Mat>& inputArrays, std::vector<cv::Mat>& outputArrays)
     outputArrays = tempdest;
 }
 
+Mat to_bitmap(const Mat& image) {
+    Mat gray_img;
+    Mat result(image.size(),CV_8UC1);
+    cvtColor(image, gray_img, cv::COLOR_BGR2GRAY);
+    int range = 20;
+    int center = 127;
+    int up_bound = center + range;
+    int down_bound = center - range;
+    for (int i = 0; i < result.rows; i++) {
+        for (int j = 0; j < result.cols; j++) {
+            if (gray_img.at<uchar>(i, j) > up_bound) {
+                result.at<uchar>(i, j) = 1;
+            }
+            else if (gray_img.at<uchar>(i, j) < down_bound) {
+                result.at<uchar>(i, j) = 0;
+            }
+            else {//不信任的pixel
+                result.at<uchar>(i, j) = 2;
+            }
+        }
+    }
+    return result;
+}
+
+vector<Mat> m_MTB(const vector<Mat>& images) {
+    int middle_index = images.size() / 2;
+    Mat align_standard = to_bitmap(images[middle_index]);
+    vector<Mat> result;
+    
+    for (int i = 0; i < images.size(); i++) {
+        if (i == middle_index) continue;
+        Mat align_target = to_bitmap(images[i]);
+        for (int j = 0; j < 5; j++) {
+            
+        }
+    }
+
+   return result;
+}
+
 
 int main() {
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
