@@ -23,6 +23,7 @@
 #define CVUI_IMPLEMENTATION
 #include "cvui.h"
 #include "tinyexpr.h"
+#include "alignment.h"
 #define CVPLOT_HEADER_ONLY
 #include <CvPlot/cvplot.h>
 
@@ -41,283 +42,190 @@
 using namespace std;
 using namespace cv;
 
+const double a = 0.18;
+const double eps = 0.05;
+const double phi = 8.0;
 
-void MTB(cv::Mat& inputArray, cv::Mat& outputArray)
-{
-    int color_count[256] = { 0 };
-    int i, j;
-    cv::Mat temp;
-    if (inputArray.type() == CV_8UC3)
-    {
-        cv::cvtColor(inputArray, temp, cv::COLOR_BGR2GRAY);
+cv::Mat global_operator(const cv::Mat& radiance_map, const cv::Mat& Lm,
+    const double Lwhite) {
+    auto rows = radiance_map.rows;
+    auto cols = radiance_map.cols;
+    cv::Mat Ld(rows, cols, CV_64FC1);
+
+    for (int i = 0; i != rows; i++) {
+        for (int j = 0; j != cols; j++) {
+            double Lm_l = Lm.at<double>(i, j);
+            Ld.at<double>(i, j) = (Lm_l * (1 + Lm_l / std::pow(Lwhite, 2))) / (1 + Lm_l);
+        }
     }
+
+    return Ld;
+}
+
+cv::Mat local_operator(const cv::Mat& radiance_map, const cv::Mat& Lm,
+    const double Lwhite) {
+    auto rows = radiance_map.rows;
+    auto cols = radiance_map.cols;
+    cv::Mat Ld(rows, cols, CV_64FC1);
+
+    const double alpha_1 = 0.35, alpha_2 = 0.35 * 1.6;
+    double s = 1.0;
+    std::vector<cv::Mat> v1s, v2s;
+    for (int i = 0; i != 8; i++) {
+        cv::Mat v1(rows, cols, CV_64FC1);
+        cv::Mat v2(rows, cols, CV_64FC1);
+        cv::GaussianBlur(Lm, v1, cv::Size(), alpha_1 * s, alpha_1 * s,
+            cv::BORDER_REPLICATE);
+        cv::GaussianBlur(Lm, v2, cv::Size(), alpha_2 * s, alpha_2 * s,
+            cv::BORDER_REPLICATE);
+        v1s.push_back(v1);
+        v2s.push_back(v2);
+
+        s *= 1.6;
+    }
+
+    s = 1.0;
+    for (int i = 0; i != rows; i++) {
+        for (int j = 0; j != cols; j++) {
+            int smax = 7;
+            for (int k = 0; k != 8; k++) {
+                auto v = (v1s[k].at<double>(i, j) - v2s[k].at<double>(i, j)) /
+                    (std::pow(2.0, phi) * a / (s * s) + v1s[k].at<double>(i, j));
+                if (std::abs(v) < eps) {
+                    smax = k;
+                    break;
+                }
+
+                s *= 1.6;
+            }
+
+            auto Lm_l = Lm.at<double>(i, j);
+            Ld.at<double>(i, j) = Lm_l * (1 + Lm_l / std::pow(Lwhite, 2)) /
+                (1 + v1s[smax].at<double>(i, j));
+        }
+    }
+
+    return Ld;
+}
+
+cv::Mat tone_mapping(const cv::Mat& radiance_map, const int tone = 2) {
+    std::cout << "[Tone mapping...]" << std::endl;
+
+    if (tone == 3)
+        //return contrast(radiance_map);
+
+    if (tone == 0)
+        std::cout << "\tblend global and local operator" << std::endl;
+    else if (tone == 1)
+        std::cout << "\tglobal operator" << std::endl;
     else
-    {
-        temp = inputArray.clone();
-    }
+        std::cout << "\tlocal operator" << std::endl;
 
-    //#pragma omp parallel for private(i, j)
-    for (j = 0; j < inputArray.rows; j++)
-    {
-        for (i = 0; i < inputArray.cols; i++)
-        {
-            color_count[temp.at<uchar>(j, i)]++;
+    auto rows = radiance_map.rows;
+    auto cols = radiance_map.cols;
+
+    cv::Mat Lw(rows, cols, CV_64FC1);
+    double lum_mean = 0.0;
+    double Lwhite = 0.0;
+
+    for (int i = 0; i != rows; i++) {
+        for (int j = 0; j != cols; j++) {
+            auto value = radiance_map.at<cv::Vec3d>(i, j);
+            auto lum = Lw.at<double>(i, j) =
+                0.27 * value[0] + 0.67 * value[1] + 0.06 * value[2];
+            for (int c = 0; c != 3; c++) Lwhite = std::max(Lwhite, value[c]);
+            lum_mean += std::log(0.000001 + lum);
         }
     }
+    lum_mean = std::exp(lum_mean / (rows * cols));
+    std::cout << "\tLwhite: " << Lwhite << std::endl;
 
-    int threshold_total = 0;
-    double thresh;
-    for (j = 0; j < inputArray.rows; j++)
-    {
-        threshold_total += color_count[j];
+    cv::Mat Lm(rows, cols, CV_64FC1);
+    for (int i = 0; i != rows; i++)
+        for (int j = 0; j != cols; j++)
+            Lm.at<double>(i, j) = Lw.at<double>(i, j) * a / lum_mean;
 
-        if (threshold_total >= (temp.cols * temp.rows) / 2)
-        {
-            thresh = j;
-            break;
-        }
-    }
-
-    cv::Mat&& dest = cv::Mat::zeros(temp.rows, temp.cols, CV_8UC1);
-#pragma omp parallel for private(i, j)
-    for (j = 0; j < inputArray.rows; j++)
-    {
-        for (i = 0; i < inputArray.cols; i++)
-        {
-            temp.at<uchar>(j, i) > thresh ? dest.at<uchar>(j, i) = 255 : dest.at<uchar>(j, i) = 0;
-        }
-    }
-    outputArray.release();
-    outputArray = dest.clone();
-    temp.release();
-}
-
-void MTBA(std::vector<cv::Mat>& inputArrays, std::vector<cv::Mat>& outputArrays)
-{
-    cv::Mat sample = inputArrays[0].clone();
-    MTB(sample, sample);
-    std::vector<int> move_length_x(inputArrays.size(), 0);
-    std::vector<int> move_length_y(inputArrays.size(), 0);
-
-    //cut the noise frome the base (first pic)
-
-    cout << "offsets:\n";
-    for (int j = 1; j < inputArrays.size(); j++)
-    {
-        cv::Mat temp1 = inputArrays[j].clone();
-        MTB(temp1, temp1);
-        for (int i = 5; i >= 0; i--)
-        {
-            cv::Mat temp_samp = sample.clone();
-            cv::Mat temp = temp1.clone();
-
-            cv::Mat sampimg = sample.clone();
-            cv::Mat otherimg = temp1.clone();
-
-            cv::Mat samp = temp_samp.clone();
-            cv::Mat other = temp1.clone();
-            cv::resize(samp, samp, cv::Size((int)(sample.cols / pow(2, i + 1)), (int)(sample.rows / pow(2, i + 1))));
-            cv::resize(samp, samp, cv::Size((int)(sample.cols / pow(2, i)), (int)(sample.rows / pow(2, i))));
-            cv::resize(other, other, cv::Size((int)(sample.cols / pow(2, i + 1)), (int)(sample.rows / pow(2, i + 1))));
-            cv::resize(other, other, cv::Size((int)(sample.cols / pow(2, i)), (int)(sample.rows / pow(2, i))));
-
-            //            cv::imshow("samp",samp);
-            //            cv::imshow("temp_samp",temp_samp);
-                        //cv::imshow("temp",temp);
-
-            for (int b = 0; b < samp.rows; b++)
-            {
-                for (int a = 0; a < samp.cols; a++)
-                {
-                    if (samp.at<uchar>(b, a) != sampimg.at<uchar>(b, a))
-                    {
-                        temp_samp.at<uchar>(b, a) = 0;
-                    }
-                    if (other.at<uchar>(b, a) != otherimg.at<uchar>(b, a))
-                    {
-                        temp.at<uchar>(b, a) = 0;
-                    }
-                    if (sampimg.at<uchar>(b, a) != otherimg.at<uchar>(b, a))
-                    {
-                        temp.at<uchar>(b, a) = 0;
-                    }
-
-                }
-            }
-            //            cv::imshow("sample",sample);
-            //            cv::imshow("samp",samp);
-            //            cv::imshow("temp_samp",temp_samp);
-            //            cv::imshow("temp",temp);
-
-                        //cv::resize(temp, temp, cv::Size((int)(sample.cols / pow(2, i)), (int)(sample.rows / pow(2, i))));
-                        //cv::resize(temp_samp, temp_samp, cv::Size((int)(sample.cols / pow(2, i)), (int)(sample.rows / pow(2, i))));
-
-            double total[9] = { 0 };
-
-            for (int b = 0; b < temp_samp.rows; b++)
-            {
-                for (int a = 0; a < temp_samp.cols; a++)
-                {
-                    int count = 0;
-                    for (int y = -1; y <= 1; y++)
-                    {
-                        for (int x = -1; x <= 1; x++)
-                        {
-                            if (a + move_length_x[j] + x > 0 && a + move_length_x[j] + x < temp.cols && b + move_length_y[j] + y > 0 && b + move_length_y[j] + y < temp.rows)
-                            {
-                                if ((int)temp_samp.at<uchar>(b, a) != (int)temp.at<uchar>(b + move_length_y[j] + y, a + move_length_x[j] + x))
-                                    total[count]++;
-                            }
-                            count++;
-                        }
-                    }
-                }
+    cv::Mat tonemap(rows, cols, CV_64FC3);
+    double blend = 0.5;
+    if (tone == 1) blend = 1.0;
+    if (tone == 2) blend = 0.0;
+    auto Ld_g = tone != 2 ? global_operator(radiance_map, Lm, Lwhite)
+        : cv::Mat::zeros(radiance_map.size(), CV_64FC1);
+    auto Ld_l = tone != 1 ? local_operator(radiance_map, Lm, Lwhite)
+        : cv::Mat::zeros(radiance_map.size(), CV_64FC1);
+    for (int i = 0; i != rows; i++)
+        for (int j = 0; j != cols; j++)
+            for (int channel = 0; channel != 3; channel++) {
+                auto Ld = Ld_g.at<double>(i, j) * (blend)+
+                    Ld_l.at<double>(i, j) * (1.0 - blend);
+                auto value = radiance_map.at<cv::Vec3d>(i, j)[channel] * Ld /
+                    Lw.at<double>(i, j);
+                // value = std::pow(value, 1 / 1.2);
+                tonemap.at<cv::Vec3d>(i, j)[channel] = value * 255;
             }
 
-            int a = 0;
-            //            qDebug () << total[0];
-            for (int b = 1; b < 9; b++)
-            {
-                if (total[a] > total[b])
-                {
-                    a = b;
-                }
-                //                qDebug () << total[b];
-            }
-
-            //            qDebug() << "=========";
-            if (total[a] * 1.5 >= total[4])
-            {
-                a = 4;
-            }
-
-            //            qDebug () << "A:" << a;
-            //            qDebug () << "==========";
-
-
-            switch (a)
-            {
-            case 0:
-                move_length_y[j] = (move_length_y[j] - 1) * 2;
-                move_length_x[j] = (move_length_x[j] - 1) * 2;
-                break;
-            case 1:
-                move_length_y[j] = (move_length_y[j] - 1) * 2;
-                break;
-            case 2:
-                move_length_y[j] = (move_length_y[j] - 1) * 2;
-                move_length_x[j] = (move_length_x[j] + 1) * 2;
-                break;
-            case 3:
-                move_length_x[j] = (move_length_x[j] - 1) * 2;
-                break;
-            case 4:
-                break;
-            case 5:
-                move_length_x[j] = (move_length_x[j] + 1) * 2;
-                break;
-            case 6:
-                move_length_y[j] = (move_length_y[j] + 1) * 2;
-                move_length_x[j] = (move_length_x[j] - 1) * 2;
-                break;
-            case 7:
-                move_length_y[j] = (move_length_y[j] + 1) * 2;
-                break;
-            case 8:
-                move_length_y[j] = (move_length_y[j] + 1) * 2;
-                move_length_x[j] = (move_length_x[j] + 1) * 2;
-                break;
-            }
-            //            qDebug() << move_length_x[j] << " " << move_length_y[j];
-            //            qDebug() << "@@@@@@@";
-        }
-
-        cout << move_length_x[j] << ' ' << move_length_y[j] << endl;
-    }
-    cout << "min max\n";
-    int minX = move_length_x[0], maxX = move_length_x[0];
-    int minY = move_length_y[0], maxY = move_length_y[0];
-
-    for (int i = 1; i < inputArrays.size(); i++)
-    {
-        if (minX > move_length_x[i]) { minX = move_length_x[i]; }
-        if (maxX < move_length_x[i]) { maxX = move_length_x[i]; }
-        if (minY > move_length_y[i]) { minY = move_length_y[i]; }
-        if (maxY < move_length_y[i]) { maxY = move_length_y[i]; }
-    }
-    std::vector<cv::Mat> tempdest(inputArrays.size());
-    cout << "x " << minX << ' ' << maxX << " y " << minY << ' ' << maxY << endl;
-    int a, j, i, k;
-#pragma parallel for private(a, j, i, k)
-    for (a = 0; a < inputArrays.size(); a++)
-    {
-        cv::Mat&& dest = cv::Mat::zeros(sample.rows + abs(minY) + abs(maxY), sample.cols + abs(minX) + abs(maxX), CV_8UC3);
-        for (j = 0; j < inputArrays[a].rows; j++)
-        {
-            for (i = 0; i < inputArrays[a].cols; i++)
-            {
-                for (k = 0; k < 3; k++)
-                {
-                    dest.at<cv::Vec3b>(j + abs(minY) + move_length_y[a], i + abs(minX) + move_length_x[a])[k] = inputArrays[a].at<cv::Vec3b>(j, i)[k];
-                }
-            }
-        }
-        tempdest[a] = dest.clone();
-    }
-
-    cv::Mat&& dest1 = cv::Mat::zeros(sample.rows + abs(minY) + abs(maxY), sample.cols + abs(minX) + abs(maxX), CV_8UC3);
-
-    int tmp = 0;
-    //#pragma parallel for private(a, j, i, k) firstprivate(tmp)
-    for (j = 0; j < tempdest[0].rows; j++)
-    {
-        for (i = 0; i < tempdest[0].cols; i++)
-        {
-            for (k = 0; k < 3; k++)
-            {
-                tmp = 0;
-                for (a = 0; a < tempdest.size(); a++)
-                {
-                    tmp += tempdest[a].at<cv::Vec3b>(j, i)[k];
-                }
-
-                dest1.at<cv::Vec3b>(j, i)[k] = tmp / tempdest.size();
-            }
-        }
-    }
-
-    outputArrays.clear();
-    outputArrays = tempdest;
+    return tonemap;
 }
 
 
+pair<Mat,Mat> to_bitmap(const Mat& image) {
+    Mat result(image.size(), CV_8UC1);
+    Mat exclude(image.size(),CV_8UC1);
+    int range = 4;
 
-
-Mat to_bitmap(const Mat& image) {
-    Mat gray_img;
-    Mat result(image.size(),CV_8UC1);
-    cvtColor(image, gray_img, cv::COLOR_BGR2GRAY);
-    int range = 0;
-    int center = 127;
-    int up_bound = center + range;
-    int down_bound = center - range;
+    vector<uchar> pixel_values;
     for (int i = 0; i < result.rows; i++) {
         for (int j = 0; j < result.cols; j++) {
-            if (gray_img.at<uchar>(i, j) > up_bound) {
+            pixel_values.push_back(image.at<uchar>(i, j));
+        }
+    }
+    sort(pixel_values.begin(), pixel_values.end());
+    uchar median = pixel_values[pixel_values.size()/2];
+    int up_bound = median + range;
+    int down_bound = median - range;
+    for (int i = 0; i < result.rows; i++) {
+        for (int j = 0; j < result.cols; j++) {
+            result.at<uchar>(i, j) = image.at<uchar>(i, j) > median ? 255 : 0;
+            exclude.at<uchar>(i, j) = image.at<uchar>(i, j) > up_bound || image.at<uchar>(i, j) < down_bound ? 255 : 0;
+
+        }
+    }
+    return make_pair(result,exclude);
+}
+
+Mat to_bitmap2(const Mat& image) {
+    Mat result(image.size(), CV_8UC1);
+    Mat exclude(image.size(), CV_8UC1);
+    int range = 4;
+
+    vector<uchar> pixel_values;
+    for (int i = 0; i < result.rows; i++) {
+        for (int j = 0; j < result.cols; j++) {
+            pixel_values.push_back(image.at<uchar>(i, j));
+        }
+    }
+    sort(pixel_values.begin(), pixel_values.end());
+    uchar median = pixel_values[pixel_values.size() / 2];
+    int up_bound = median + range;
+    int down_bound = median - range;
+    for (int i = 0; i < result.rows; i++) {
+        for (int j = 0; j < result.cols; j++) {
+            if (image.at<uchar>(i, j) > up_bound) {
                 result.at<uchar>(i, j) = 1;
             }
-            else if (gray_img.at<uchar>(i, j) < down_bound) {
+            else if (image.at<uchar>(i, j) < down_bound) {
                 result.at<uchar>(i, j) = 0;
             }
-            else {//不信任的pixel
+            else {
                 result.at<uchar>(i, j) = 2;
             }
+
         }
     }
     return result;
 }
 
-vector<Mat> MTB(const vector<Mat>& images, int align_image_index = -1) {
+vector<Mat> MTB(const vector<Mat>& images,int MTB_iteration = 6, int align_image_index = -1) {
     if (align_image_index == -1) {
         align_image_index = images.size() / 2;
     }
@@ -325,121 +233,85 @@ vector<Mat> MTB(const vector<Mat>& images, int align_image_index = -1) {
     int rows = align_standard.rows;
     int cols = align_standard.cols;
     vector<Mat> result(images.size());
-    vector<int> x_offsets;
-    vector<int> y_offsets;
     int dir[9][2] = {
         {-1,-1},{0,-1},{1,-1},{-1,0},{0,0},{1,0},{-1,1},{0,1},{1,1},
     };
-    cout << "offsets:\n";
+   
+    Mat* standard_pyramid = new Mat[MTB_iteration];
+    Mat* target_pyramid = new Mat[MTB_iteration];
+    cvtColor(align_standard, standard_pyramid[0], cv::COLOR_BGR2GRAY);
+    for (int i = 1; i < MTB_iteration; i++) { //產生金字塔，縮小要由上一層當來源，不能直接拿原圖縮
+        cv::resize(standard_pyramid[i - 1], standard_pyramid[i], cv::Size(), 0.5, 0.5,
+            cv::INTER_NEAREST);
+    }
+
+
     for (int i = 0; i < images.size(); i++) {
         if (i == align_image_index) {
-            x_offsets.push_back(0);
-            y_offsets.push_back(0);
+            result[i] = align_standard;
             continue;
+        }        
+        cv::cvtColor(images[i], target_pyramid[0], cv::COLOR_BGR2GRAY);
+        for (int j = 1; j < MTB_iteration; j++) { //產生金字塔，縮小要由上一層當來源，不能直接拿原圖縮
+            cv::resize(target_pyramid[j - 1], target_pyramid[j], cv::Size(), 0.5, 0.5, cv::INTER_NEAREST);
         }
-        Mat align_target = images[i];
         int x_offset = 0;
         int y_offset = 0;
-        for (int j = 5; j >= 0; j--) {
-            Mat standard;
-            Mat target;
-            int resize_rows = rows / pow(2, j);
-            int resize_cols = cols / pow(2, j);
-            resize(align_standard, standard, Size(resize_cols, resize_rows));
-            resize(align_target, target, Size(resize_cols, resize_rows));
-            standard = to_bitmap(standard);
-            target = to_bitmap(target);
-            int neighbor_diff_count[9] = { 0 };
-            auto valid_xy = [&](int row, int col)->bool {
-                return (row >= 0) && (row < resize_rows) && (col >= 0) && (col < resize_cols);
-            };
-            for (int k = 0; k < resize_rows; k++) {
-                for (int g = 0; g < resize_cols; g++) {
-                    int index = 0;
-                    for (int y = -1; y <= 1; y++) {
-                        for (int x = -1; x <= 1; x++) {
-                            int row = k + y + y_offset;
-                            int col = g + x + x_offset;
-                            if (valid_xy(row, col)) {
-                                if (target.at<uchar>(row, col) != 2 && standard.at<uchar>(k, g) != 2) {
-                                    if (target.at<uchar>(row, col) != standard.at<uchar>(k, g)) {
-                                        neighbor_diff_count[index]++;
-                                    }
-                                }
-                            }
-                            index++;
-                        }
+        for (int j = 5; j >=0; j--) {
+            cout << standard_pyramid[j].size() << " ";
+            pair<Mat, Mat> standard_bitmap = to_bitmap(standard_pyramid[j]);
+            pair<Mat, Mat> target_bitmap = to_bitmap(target_pyramid[j]);
+            //Mat standard_bitmap = to_bitmap2(standard_pyramid[j]);
+            //Mat target_bitmap = to_bitmap2(target_pyramid[j]);
+            
+            int min_diff = numeric_limits<int>::max();
+            int min_x_offset = x_offset, min_y_offset = y_offset;
+            for (int k = -1; k <= 1; k++) {
+                for (int g = -1; g <= 1; g++) {
+                    int neighbor_x_offset = x_offset + g;
+                    int neighbor_y_offset = y_offset + k;
+                    Mat shift_threshold, shift_exclude;
+                    cv::Mat mat = (cv::Mat_<double>(2, 3) << 1, 0, neighbor_y_offset, 0, 1, neighbor_x_offset);
+                    cv::warpAffine(target_bitmap.first, shift_threshold, mat, target_bitmap.first.size(),
+                        cv::INTER_NEAREST);
+                    cv::warpAffine(target_bitmap.second, shift_exclude, mat, target_bitmap.second.size(),
+                        cv::INTER_NEAREST);
+
+                    cv::Mat diff(standard_bitmap.first.size(), CV_8U);
+                    cv::bitwise_xor(standard_bitmap.first, shift_threshold, diff);
+                    cv::bitwise_and(diff, standard_bitmap.second, diff);
+                    cv::bitwise_and(diff, shift_exclude, diff);
+
+                    int diff_count = countNonZero(diff);
+                    if (min_diff > diff_count) {
+                        min_x_offset = neighbor_x_offset;
+                        min_y_offset = neighbor_y_offset;
+                        min_diff = diff_count;
                     }
                 }
             }
-            int min_diff = numeric_limits<int>::max();
-            int min_diff_neighbor = 4;
-            for (int k = 0; k < 9; k++) {
-                if (neighbor_diff_count[k] < min_diff) {
-                    min_diff = neighbor_diff_count[k];
-                    min_diff_neighbor = k;
-                }
-                cout << neighbor_diff_count[k] << ' ';
-            }
-
-            //if (neighbor_diff_count[min_diff_neighbor] < neighbor_diff_count[4] * 1.5f)
-            //{
-            //    min_diff_neighbor = 4;
-            //}
-
-            cout << endl;
-
-            x_offset += dir[min_diff_neighbor][0]; //if (dir[min_diff_neighbor][0] != 0) { x_offset *= 2; }
-            y_offset += dir[min_diff_neighbor][1]; //if (dir[min_diff_neighbor][1] != 0) { y_offset *= 2; }
-
-        }
-        cout << x_offset << ' ' << y_offset << endl;
-        x_offsets.push_back(x_offset);
-        y_offsets.push_back(y_offset);
-    }
-    cout << "min max\n";
-    int min_x_offset = *min_element(x_offsets.begin(), x_offsets.end());
-    int max_x_offset = *max_element(x_offsets.begin(), x_offsets.end());
-    int min_y_offset = *min_element(y_offsets.begin(), y_offsets.end());
-    int max_y_offset = *max_element(y_offsets.begin(), y_offsets.end());
-    cout<<"x " << min_x_offset << ' ' << max_x_offset <<" y " << min_y_offset<<' '<< max_y_offset << endl;
-    cout << "new img rows cols\n";
-    for (int i = 0; i < result.size(); i++) {
-        result[i] = Mat::zeros(rows + abs(min_y_offset) + abs(max_y_offset), cols + abs(min_x_offset) + abs(max_x_offset), CV_8UC3);
-        cout << result[i].rows << ' ' << result[i].cols << endl;
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < cols; col++) {
-                result[i].at<Vec3b>(row + abs(min_y_offset) + y_offsets[i], col + abs(min_x_offset) + x_offsets[i]) = images[i].at<Vec3b>(row, col);
+            x_offset = min_x_offset;
+            y_offset = min_y_offset;
+            cout << y_offset << ' ' << x_offset << endl;
+            if (j != 0) {
+                x_offset *= 2;
+                y_offset *= 2;
             }
         }
+        cout << "=======================final: " << y_offset << ' ' << x_offset <<endl;
+        cv::Mat mat = (cv::Mat_<double>(2, 3) << 1, 0, y_offset, 0, 1, x_offset);
+        cv::warpAffine(images[i], result[i], mat, images[i].size(),
+            cv::INTER_NEAREST);
     }
+    delete[] standard_pyramid;
+    delete[] target_pyramid;
     return result;
 }
 
 
 int main() {
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-
-    //std::string image_paths[] = {
-    //    "./exposures/img01.jpg","./exposures/img02.jpg","./exposures/img03.jpg","./exposures/img04.jpg","./exposures/img05.jpg","./exposures/img06.jpg",
-    //    "./exposures/img07.jpg","./exposures/img08.jpg","./exposures/img09.jpg","./exposures/img10.jpg","./exposures/img11.jpg","./exposures/img12.jpg",
-    //    "./exposures/img13.jpg"
-    //};
-    //float exposure_times[] = {
-    //    13.0f,10.0f,4.0f,3.2f,1.0f,0.8f,
-    //    1.0f/3.0f,0.25f,1.0f/60.0f,1.0f/80.0f,1.0f/320.0f,1.0f/400.0f,
-    //    1.0f/1000.0f
-    //};
-
-    //std::string image_paths[] = {
-    //"./home/img01.jpg","./home/img02.jpg","./home/img03.jpg","./home/img04.jpg","./home/img05.jpg","./home/img06.jpg",
-    //"./home/img07.jpg","./home/img08.jpg","./home/img09.jpg","./home/img10.jpg"
-    //};
-    //float exposure_times[] = {
-    //    1.0f/6.0f,1.0f/10.0f,1.0f/15.0f,1.0f/25.0f,1.0f/40.0f,1.0f/60.0f,
-    //    1.0f/100.0f,1.0f/160.0f,1.0f/250.0f,1.0f/400.0f
-    //};
-
+    
     std::string folder = "./jingtong1/";
     int image_count = 10;
     std::string* image_paths = new std::string[image_count];
@@ -464,14 +336,23 @@ int main() {
     //int image_count = sizeof(exposure_times) / sizeof(exposure_times[0]); // P   
     //Mat* images = new Mat[image_count];
     std::vector<Mat> images;
+    std::vector<tuple<Mat,double>> images_t;
    
     for (int i = 0; i < image_count; i++) {
-        images.push_back(imread(image_paths[i], 1));   
+        images.push_back(imread(image_paths[i], 1));
+        images_t.push_back(make_tuple(imread(image_paths[i], IMREAD_COLOR), exposure_times[i]));
     }
     bool MTB_open = true;
     if (MTB_open) {
-        MTBA(images, images);
-        //images = MTB(images);
+        //MTBA(images, images);
+        images = MTB(images);
+        //images_t = alignment(images_t,false);
+        //for (int i = 0; i < images_t.size(); i++) {
+        //    //cout << get<0>(images_t[i]).type() << endl;
+        //    cvtColor(get<0>(images_t[i]),images[i],COLOR_BGRA2BGR);
+        //    //images[i] = get<0>(images_t[i]);
+        //}
+
     }
     for (int i = 0; i < images.size(); i++) 
     {
@@ -735,6 +616,13 @@ int main() {
 
     cout << tonemapping.rows << ' ' << tonemapping.cols << endl;
     imshow("After tonemapping", tonemapping);
+
+    //Mat tonemapping2;
+    //Mat HDR_d(HDR.size(), CV_64FC3);
+    //HDR.convertTo(HDR_d,CV_64FC3);
+    //Mat output;
+    //output = tone_mapping(HDR_d,0);
+    //imshow("After tonemapping2", output);
     
     imwrite("tonemapping.png", tonemapping_8U);
     std::cout << "finish";
