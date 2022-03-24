@@ -397,3 +397,4 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 HW1/HW1/HDR_Deb_image.exr
+HW1/HW1/recovered_HDR.exr

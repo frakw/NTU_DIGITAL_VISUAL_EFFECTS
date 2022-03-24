@@ -156,13 +156,19 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="alignment.cpp" />
+    <ClCompile Include="HDR.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MTB.cpp" />
     <ClCompile Include="tinyexpr.c" />
+    <ClCompile Include="tonemapping.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="alignment.h" />
     <ClInclude Include="cvui.h" />
+    <ClInclude Include="HDR.h" />
+    <ClInclude Include="MTB.h" />
     <ClInclude Include="tinyexpr.h" />
+    <ClInclude Include="tonemapping.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

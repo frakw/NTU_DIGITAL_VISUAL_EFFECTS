@@ -24,6 +24,15 @@
     <ClCompile Include="alignment.cpp">
       <Filter>資源檔</Filter>
     </ClCompile>
+    <ClCompile Include="MTB.cpp">
+      <Filter>資源檔</Filter>
+    </ClCompile>
+    <ClCompile Include="HDR.cpp">
+      <Filter>資源檔</Filter>
+    </ClCompile>
+    <ClCompile Include="tonemapping.cpp">
+      <Filter>資源檔</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cvui.h">
@@ -33,6 +42,15 @@
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="alignment.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="MTB.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="HDR.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="tonemapping.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>
