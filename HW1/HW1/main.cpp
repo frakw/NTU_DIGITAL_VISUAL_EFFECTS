@@ -76,7 +76,10 @@ int main() {
 
     //tonemapping/////////
     
-    auto AfterTonemapping = global_operator(HDR);
+    //auto AfterTonemapping = global_operator(HDR);
+    auto AfterTonemapping = local_operator(HDR);
+    //auto AfterTonemapping = logarithmic_operator(HDR);
+
     //Mat ldr;
     //Ptr<Tonemap> tonemap = createTonemap(2.2f);
     //tonemap->process(HDR, ldr);

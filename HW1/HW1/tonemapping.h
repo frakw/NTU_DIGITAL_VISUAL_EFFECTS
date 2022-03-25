@@ -15,6 +15,8 @@
 using namespace std;
 using namespace cv;
 
+pair<Mat, Mat> logarithmic_operator(Mat HDR);
 pair<Mat, Mat> global_operator(Mat HDR);
+pair<Mat, Mat> local_operator(Mat HDR);
 
 #endif
