@@ -144,3 +144,99 @@ pair<Mat, Mat> local_operator(Mat HDR) {
     }
     return make_pair(result, result_8U);
 }
+
+inline unsigned int fast_root(unsigned int x) {
+    unsigned int a, b;
+    b = x;
+    a = x = 0x3f;
+    x = b / x;
+    a = x = (x + a) >> 1;
+    x = b / x;
+    a = x = (x + a) >> 1;
+    x = b / x;
+    x = (x + a) >> 1;
+    return(x);
+}
+#define m_distance(x1,y1,x2,y2) ((float)sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2)))
+#define m_gaussian(x,sigma) (std::exp(-(x*x)/(2 * (sigma * sigma))) / (2 * CV_PI * (sigma * sigma)))
+
+Mat bilateral_filter(Mat image, int kernel_size, float sigma_i, float sigma_s) {
+    Mat result = image.clone();
+    if (kernel_size % 2 == 0 || image.type() != CV_32FC1) return result;
+    int width = image.cols;
+    int height = image.rows;
+    int half_kernel_size = (int)kernel_size / 2;
+    for (int i = half_kernel_size; i < height - half_kernel_size; i++) {
+        for (int j = half_kernel_size; j < width - half_kernel_size; j++) {
+            float total = 0.0f;
+            double weight_total = 0.0f;
+            for (int k = -half_kernel_size; k <= half_kernel_size; k++) {
+                for (int g = -half_kernel_size; g <= half_kernel_size; g++) {
+                    int row = i + k;
+                    int col = j + g;
+                    float diff = image.at<float>(row, col) - image.at<float>(i, j);
+                    float gi = m_gaussian(diff, sigma_i);
+                    float dis = m_distance(i, j, row, col);
+                    float gs = m_gaussian(dis, sigma_s);
+                    float weight = gi * gs;
+                    total += image.at<float>(row, col) * weight;
+                    weight_total += weight;
+                }
+            }
+            result.at<float>(i, j) = total / weight_total;
+        }
+    }
+    return result;
+}
+
+
+pair<Mat, Mat> bilateral_operator(Mat HDR,bool use_cv_bilateral) {
+    Mat intensity(HDR.size(), CV_32FC1);
+    Mat intensity_log(HDR.size(), CV_32FC1);
+    for (int i = 0; i < intensity.rows; i++) {
+        for (int j = 0; j < intensity.cols; j++) {
+            double lw = 0.0722 * HDR.at<Vec3f>(i, j)[0] + 0.7152f * HDR.at<Vec3f>(i, j)[1] + 0.2126f * HDR.at<Vec3f>(i, j)[2]; //­pºâ«G«×
+            if (isnan(lw)) {
+                intensity.at<float>(i, j) = 0.0f;
+                continue;
+            }
+            intensity.at<float>(i, j) = lw;
+            intensity_log.at<float>(i, j) = log10(lw);
+        }
+    }
+
+    Mat base_log;
+    if (use_cv_bilateral) {
+        bilateralFilter(intensity_log, base_log, -1, 0.4, 0.02 * std::min(HDR.rows, HDR.cols));
+    }
+    else {
+        base_log = bilateral_filter(intensity_log, 5, 0.4f, 0.02f * std::min(HDR.rows, HDR.cols));
+    }
+
+    Mat detail_log(HDR.size(), CV_32FC1);
+    for (int i = 0; i < detail_log.rows; i++) {
+        for (int j = 0; j < detail_log.cols; j++) {
+            detail_log.at<float>(i, j) = intensity_log.at<float>(i, j) - base_log.at<float>(i, j);
+        }
+    }
+    double min_log, max_log;
+    minMaxLoc(detail_log,&min_log,&max_log);
+    double compression_factor = log10(5.0f) / (max_log - min_log);
+    double log_absolute_scale = max_log * compression_factor;
+
+    Mat result(HDR.size(), CV_32FC3);
+    Mat result_8U(HDR.size(), CV_8UC3);
+    for (int i = 0; i < intensity.rows; i++) {
+        for (int j = 0; j < intensity.cols; j++) {
+            float lw = intensity.at<float>(i, j);
+            float ld = pow(10,base_log.at<float>(i, j) * compression_factor + detail_log.at<float>(i, j) - log_absolute_scale);
+            result.at<Vec3f>(i, j)[0] = saturate_cast<float>( HDR.at<cv::Vec3f>(i, j)[0] * (ld / lw));
+            result_8U.at<Vec3b>(i, j)[0] = saturate_cast<uchar>(HDR.at<cv::Vec3f>(i, j)[0] * (ld * 255.0f / lw));
+            result.at<Vec3f>(i, j)[1] = saturate_cast<float>(HDR.at<cv::Vec3f>(i, j)[1] * (ld / lw));
+            result_8U.at<Vec3b>(i, j)[1] = saturate_cast<uchar>(HDR.at<cv::Vec3f>(i, j)[1] * (ld * 255.0f / lw));
+            result.at<Vec3f>(i, j)[2] = saturate_cast<float>(HDR.at<cv::Vec3f>(i, j)[2] * (ld / lw));
+            result_8U.at<Vec3b>(i, j)[2] = saturate_cast<uchar>(HDR.at<cv::Vec3f>(i, j)[2] * (ld * 255.0f / lw));
+        }
+    }
+    return make_pair(result, result_8U);
+}

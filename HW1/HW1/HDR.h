@@ -19,6 +19,7 @@
 using namespace std;
 using namespace cv;
 
-Mat HDR_recover(vector<Mat> images, vector<float> exposure_times);
+Mat Debevec_HDR_recover(vector<Mat> images, vector<float> exposure_times);
+Mat Robertson_HDR_recover(vector<Mat> images, vector<float> exposure_times, int iteration = 30);
 
 #endif

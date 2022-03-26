@@ -25,8 +25,8 @@ using namespace cv;
 int main() {
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     
-    std::string folder = "./balcony3/";
-    int image_count = 10;
+    std::string folder = "./exposures/";
+    int image_count = 13;
     std::string* image_paths = new std::string[image_count];
     float* exposure_times = new float[image_count];
     std::fstream time_file(folder + "time.data");
@@ -51,7 +51,7 @@ int main() {
         images.push_back(imread(image_paths[i], 1));
         //images_t.push_back(make_tuple(imread(image_paths[i], IMREAD_COLOR), exposure_times[i]));
     }
-    bool MTB_open = true;
+    bool MTB_open = false;
     if (MTB_open) {
         //MTBA(images, images);
         images = MTB(images);
@@ -63,7 +63,8 @@ int main() {
         //}
 
     }
-    Mat HDR = HDR_recover(images, vector<float>(exposure_times, exposure_times + image_count));
+    //Mat HDR = Debevec_HDR_recover(images, vector<float>(exposure_times, exposure_times + image_count));
+    Mat HDR = Robertson_HDR_recover(images, vector<float>(exposure_times, exposure_times + image_count),30);
     Mat HDR_radiance;
     imshow("HDR", HDR);
    
@@ -76,9 +77,10 @@ int main() {
 
     //tonemapping/////////
     
-    //auto AfterTonemapping = global_operator(HDR);
-    auto AfterTonemapping = local_operator(HDR);
+    auto AfterTonemapping = global_operator(HDR);
+    //auto AfterTonemapping = local_operator(HDR);
     //auto AfterTonemapping = logarithmic_operator(HDR);
+    //auto AfterTonemapping = bilateral_operator(HDR,true);
 
     //Mat ldr;
     //Ptr<Tonemap> tonemap = createTonemap(2.2f);
