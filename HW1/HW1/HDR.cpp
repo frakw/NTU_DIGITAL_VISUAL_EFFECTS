@@ -17,7 +17,7 @@
 
 #define fixed_sample
 
-#define weight_exp_range 5
+#define weight_exp_range 7
 float weight(int in){
     float value = in / (255.0f / weight_exp_range) - (weight_exp_range / 2.0f);
     return exp(-value * value);
@@ -195,9 +195,6 @@ Mat Debevec_HDR_recover(vector<Mat> images,vector<float> exposure_times) {
                 else {
                     HDR.at<Vec3f>(row, col)(color) = result;
                 }
-                //HDR_radiance.at<Vec3f>(row, col)(color) = log_sum / weight_sum;
-                //std::cout << HDR.at<Vec3f>(row, col)(color) << "   " << HDR_radiance.at<Vec3f>(row, col)(color) <<'\n';
-                //std::cout << HDR.at<Vec3f>(row, col)(color) << std::endl;
             }
         }
     }
@@ -222,6 +219,7 @@ Mat Robertson_HDR_recover(vector<Mat> images, vector<float> exposure_times, int 
         Gfunc[2][i] = i / 128.0f;
     }
     Mat Ei = Mat::zeros(images[0].size(), CV_32FC3);
+    auto axes = CvPlot::makePlotAxes();
     for (int color = 0; color < 3; color++) {
         for (int it = 0; it < iteration; it++) {
             //用G反推出Ei
@@ -260,6 +258,8 @@ Mat Robertson_HDR_recover(vector<Mat> images, vector<float> exposure_times, int 
                 Gfunc[color][i] /= Gfunc[color][128];
             }
         }
+        vector<int> x_index(256);
+        for (int i = 0; i < 256; i++) { x_index[i] = i; }
         switch (color)
         {
         case 0:axes.create<CvPlot::Series>(x_index, std::vector<float>(std::begin(Gfunc[color]), std::end(Gfunc[color])), "-b"); break;
@@ -269,6 +269,7 @@ Mat Robertson_HDR_recover(vector<Mat> images, vector<float> exposure_times, int 
             break;
         }
     }
+    imshow("response curve", axes.render());
     for (int color = 0; color < 3; color++) {
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {

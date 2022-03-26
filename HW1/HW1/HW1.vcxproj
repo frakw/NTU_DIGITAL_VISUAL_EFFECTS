@@ -155,7 +155,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="alignment.cpp" />
     <ClCompile Include="HDR.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MTB.cpp" />
@@ -163,8 +162,6 @@
     <ClCompile Include="tonemapping.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="alignment.h" />
-    <ClInclude Include="cvui.h" />
     <ClInclude Include="HDR.h" />
     <ClInclude Include="MTB.h" />
     <ClInclude Include="tinyexpr.h" />

@@ -15,9 +15,10 @@
 using namespace std;
 using namespace cv;
 
-pair<Mat, Mat> logarithmic_operator(Mat HDR);
+
 pair<Mat, Mat> global_operator(Mat HDR);
 pair<Mat, Mat> local_operator(Mat HDR);
 pair<Mat, Mat> bilateral_operator(Mat HDR, bool use_cv_bilateral = true);
+pair<Mat, Mat> logarithmic_operator(Mat HDR);
 
 #endif
