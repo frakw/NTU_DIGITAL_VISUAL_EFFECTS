@@ -151,7 +151,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="blend.cpp" />
+    <ClCompile Include="combine.cpp" />
+    <ClCompile Include="image_stitch.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="sift.cpp" />
+    <ClCompile Include="warping.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="blend.h" />
+    <ClInclude Include="combine.h" />
+    <ClInclude Include="feature_point.h" />
+    <ClInclude Include="image_stitch.h" />
+    <ClInclude Include="match_info.h" />
+    <ClInclude Include="sift.h" />
+    <ClInclude Include="sift_define.h" />
+    <ClInclude Include="warping.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

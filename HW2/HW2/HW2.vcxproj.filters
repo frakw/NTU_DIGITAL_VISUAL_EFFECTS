@@ -18,5 +18,46 @@
     <ClCompile Include="main.cpp">
       <Filter>資源檔</Filter>
     </ClCompile>
+    <ClCompile Include="sift.cpp">
+      <Filter>資源檔</Filter>
+    </ClCompile>
+    <ClCompile Include="image_stitch.cpp">
+      <Filter>資源檔</Filter>
+    </ClCompile>
+    <ClCompile Include="blend.cpp">
+      <Filter>資源檔</Filter>
+    </ClCompile>
+    <ClCompile Include="warping.cpp">
+      <Filter>資源檔</Filter>
+    </ClCompile>
+    <ClCompile Include="combine.cpp">
+      <Filter>資源檔</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="sift_define.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="sift.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="image_stitch.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="feature_point.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="match_info.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="blend.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="warping.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="combine.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
