@@ -1,53 +1,59 @@
 #ifndef _SIFT_DEF_
 #define _SIFT_DEF_
+
+
+//總共幾個(層)octave
+#define SIFT_N_OCTAVE 3
+
 // default number of sampled intervals per octave
-#define SIFT_INTVLS = 3;
+//每層octave有幾個layer
+#define SIFT_INTVLS 6
 
 // default sigma for initial gaussian smoothing
-#define SIFT_SIGMA = 1.6f;
+#define SIFT_SIGMA 1.6f
 
 // default threshold on keypoint contrast |D(x)|
-#define SIFT_CONTR_THR = 0.04f;
+#define SIFT_CONTR_THR 0.04f
 
 // default threshold on keypoint ratio of principle curvatures
-#define SIFT_CURV_THR = 10.f;
+#define SIFT_CURV_THR 10.f
 
 // double image size before pyramid construction?
-#define SIFT_IMG_DBL = true;
+#define SIFT_IMG_DBL true
 
 // default width of descriptor histogram array
-#define SIFT_DESCR_WIDTH = 4;
+#define SIFT_DESCR_WIDTH 4
 
 // default number of bins per histogram in descriptor array
-#define SIFT_DESCR_HIST_BINS = 8;
+#define SIFT_DESCR_HIST_BINS 8
 
 // assumed gaussian blur for input image
-#define SIFT_INIT_SIGMA = 0.5f;
+#define SIFT_INIT_SIGMA 0.5f
 
 // width of border in which to ignore keypoints
-#define SIFT_IMG_BORDER = 5;
+#define SIFT_IMG_BORDER 5
 
 // maximum steps of keypoint interpolation before failure
-#define SIFT_MAX_INTERP_STEPS = 5;
+#define SIFT_MAX_INTERP_STEPS 5
 
 // default number of bins in histogram for orientation assignment
-#define SIFT_ORI_HIST_BINS = 36;
+#define SIFT_ORI_HIST_BINS 36
 
 // determines gaussian sigma for orientation assignment
-#define SIFT_ORI_SIG_FCTR = 1.5f;
+#define SIFT_ORI_SIG_FCTR 1.5f
 
 // determines the radius of the region used in orientation assignment
-#define SIFT_ORI_RADIUS = 3 * SIFT_ORI_SIG_FCTR;
+#define SIFT_ORI_RADIUS  (3 * SIFT_ORI_SIG_FCTR)
 
 // orientation magnitude relative to max that results in new feature
-#define SIFT_ORI_PEAK_RATIO = 0.8f;
+#define SIFT_ORI_PEAK_RATIO 0.8f
 
 // determines the size of a single descriptor orientation histogram
-#define SIFT_DESCR_SCL_FCTR = 3.f;
+#define SIFT_DESCR_SCL_FCTR 3.f
 
 // threshold on magnitude of elements of descriptor vector
-#define SIFT_DESCR_MAG_THR = 0.2f;
+#define SIFT_DESCR_MAG_THR 0.2f
 
 // factor used to convert floating-point descriptor to unsigned char
-#define SIFT_INT_DESCR_FCTR = 512.f;
+#define SIFT_INT_DESCR_FCTR 512.f
 #endif // !_SIFT_DEF_
