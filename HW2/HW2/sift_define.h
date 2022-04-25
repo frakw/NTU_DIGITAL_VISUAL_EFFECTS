@@ -2,6 +2,11 @@
 #define _SIFT_DEF_
 
 
+#define SIFT_SIGMA_MIN 0.8f
+
+#define SIFT_MIN_PIX_DIST 0.5
+
+
 //總共幾個(層)octave
 #define SIFT_N_OCTAVE 3
 
@@ -11,6 +16,14 @@
 
 // default sigma for initial gaussian smoothing
 #define SIFT_SIGMA 1.6f
+
+#define SIFT_C_DOG 0.015f
+
+#define SIFT_C_EDGE 10
+
+#define SIFT_N_SPO 3
+
+#define SIFT_MAX_REFINE_ITER 5
 
 // default threshold on keypoint contrast |D(x)|
 #define SIFT_CONTR_THR 0.04f
