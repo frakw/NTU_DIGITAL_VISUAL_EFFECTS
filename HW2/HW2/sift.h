@@ -28,7 +28,9 @@ FeaturePoint generate_feature_point(const vector<Mat>& dogs, int row, int col, i
 
 tuple<float, float, float> update_feature_point(FeaturePoint& fp, const vector<Mat>& dogs);
 
-bool on_edge(FeaturePoint, const Mat& current);
+bool on_edge(FeaturePoint, const const vector<Mat>& dogs);
+
+vector<Mat> generate_gradient_pyramid(const vector<Mat>& gaussian_pyramid);
 
 vector<MatchInfo> match(Mat img1, vector<FeaturePoint> fp1, Mat img2, vector<FeaturePoint> fp2);
 

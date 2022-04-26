@@ -17,6 +17,8 @@ vector<FeaturePoint> SIFT(Mat img) {
 	for (int i = 0; i < dogs.size(); i++) {
 		imshow(to_string(i), dogs[i]);
 	}
+
+	find_feature_points(dogs);
 	return result;
 }
 
@@ -86,7 +88,7 @@ vector<Mat> difference_of_gaussian_pyramid(const vector<Mat>& gaussian_pyramid) 
 vector<FeaturePoint> find_feature_points(vector<Mat> dogs) {
 	vector<FeaturePoint> result;
 	for (int i = 0; i < SIFT_N_OCTAVE; i++) {		
-		for (int j = 1; j < SIFT_INTVLS - 1; j++) {//會需要前後兩個layer的資訊，因此第一個跟最後一個layer不跑
+		for (int j = 1; j < (SIFT_INTVLS - 1) - 1; j++) {//會需要前後兩個layer的資訊，因此第一個跟最後一個layer不跑
 			Mat& prev = dogs[i * (SIFT_INTVLS - 1) + j - 1];
 			Mat& current = dogs[i * (SIFT_INTVLS - 1) + j];
 			Mat& next = dogs[i * (SIFT_INTVLS - 1) + j + 1];
@@ -132,9 +134,13 @@ bool is_extremum(const Mat& prev, const Mat& current, const Mat& next, int row, 
 FeaturePoint generate_feature_point(const vector<Mat>& dogs, int row, int col, int octave, int layer_index) {
 	FeaturePoint result(row, col, octave, layer_index);
 	for (int i = 0; i < SIFT_MAX_REFINE_ITER; i++) {
+		//cout << row << " " << col << endl;
 		tuple<float, float, float> offsets = update_feature_point(result, dogs);
-		float max_offset = max(abs(get<0>(offsets)), abs(get<1>(offsets)), abs(get<2>(offsets)));
-		if (result.layer_index >= (SIFT_INTVLS - 1) || result.layer_index < 1) break;
+		float max_offset = max({ abs(get<0>(offsets)), abs(get<1>(offsets)), abs(get<2>(offsets)) });
+		//result.layer_index += round(get<0>(offsets));
+		//result.col += round(get<1>(offsets));
+		//result.row += round(get<2>(offsets));
+		if (result.layer_index >= (SIFT_INTVLS - 2) || result.layer_index < 1) break;
 		if (max_offset < 0.6f && abs(result.extremum_val) > SIFT_C_DOG && !on_edge(result, dogs)) {			
 			result.sigma = std::pow(2, result.octave) * SIFT_SIGMA_MIN * std::pow(2, (abs(get<0>(offsets)) + result.layer_index) / SIFT_N_SPO);
 			result.x = SIFT_MIN_PIX_DIST * std::pow(2, result.octave) * (abs(get<1>(offsets)) + result.col);
@@ -146,6 +152,17 @@ FeaturePoint generate_feature_point(const vector<Mat>& dogs, int row, int col, i
 	return result;
 }
 
+auto get_pixel = [&](const Mat& mat, int row, int col) -> float {
+	if (col < 0) { col = 0; }
+	else if (col >= mat.cols) { col = mat.cols - 1; }
+
+	if (row < 0) { row = 0; }
+
+	else if (row >= mat.rows) { row = mat.rows - 1; }
+
+	return mat.at<float>(row, col);
+};
+
 
 /// 待修改//////////////////////////////////////////////
 tuple<float, float, float> update_feature_point(FeaturePoint& fp, const vector<Mat>& dogs) {
@@ -153,25 +170,26 @@ tuple<float, float, float> update_feature_point(FeaturePoint& fp, const vector<M
 	float h11, h12, h13, h22, h23, h33;
 	int x = fp.col, y = fp.row;
 
-	const Mat& prev = dogs[fp.octave * (SIFT_INTVLS - 1) + fp.layer_index - 1];
-	const Mat& current = dogs[fp.octave * (SIFT_INTVLS - 1)];
-	const Mat& next = dogs[fp.octave * (SIFT_INTVLS - 1) + fp.layer_index + 1];
+	int base_index = fp.octave * (SIFT_INTVLS - 1) + fp.layer_index;
+	const Mat& prev = dogs[base_index - 1];
+	const Mat& current = dogs[base_index];
+	const Mat& next = dogs[base_index + 1];
 
 	// gradient 
-	g1 = (current.at<float>(x, y) - prev.at<float>(x, y)) * 0.5;
-	g2 = (current.at<float>(x + 1, y) - current.at<float>(x - 1, y)) * 0.5;
-	g3 = (current.at<float>(x, y + 1) - current.at<float>(x, y - 1)) * 0.5;
+	g1 = (get_pixel(next,y, x) - get_pixel(prev,y, x)) * 0.5;
+	g2 = (get_pixel(current,y, x + 1) - get_pixel(current,y, x - 1)) * 0.5;
+	g3 = (get_pixel(current,y + 1, x) - get_pixel(current,y - 1, x)) * 0.5;
 
 	// hessian
-	h11 = next.at<float>(x, y) + prev.at<float>(x, y, 0) - 2 * current.at<float>(x, y);
-	h22 = current.at<float>(x + 1, y) + current.at<float>(x - 1, y) - 2 * current.at<float>(x, y);
-	h33 = current.at<float>(x, y + 1) + current.at<float>(x, y - 1) - 2 * current.at<float>(x, y);
-	h12 = (next.at<float>(x + 1, y) - next.at<float>(x - 1, y)
-		- prev.at<float>(x + 1, y) + prev.at<float>(x - 1, y)) * 0.25;
-	h13 = (next.at<float>(x, y + 1) - next.at<float>(x, y - 1)
-		- prev.at<float>(x, y + 1) + prev.at<float>(x, y - 1)) * 0.25;
-	h23 = (current.at<float>(x + 1, y + 1) - current.at<float>(x + 1, y - 1)
-		- current.at<float>(x - 1, y + 1) + current.at<float>(x - 1, y - 1)) * 0.25;
+	h11 = get_pixel(next,y, x) + get_pixel(prev,y, x) - 2 * get_pixel(current,y, x);
+	h22 = get_pixel(current,y, x + 1) + get_pixel(current,y, x - 1) - 2 * get_pixel(current,y, x);
+	h33 = get_pixel(current,y + 1, x) + get_pixel(current,y - 1, x) - 2 * get_pixel(current,y, x);
+	h12 = (get_pixel(next,y, x + 1) - get_pixel(next,y, x - 1)
+		- get_pixel(prev,y, x + 1) + get_pixel(prev,y, x - 1)) * 0.25;
+	h13 = (get_pixel(next,y + 1, x) - get_pixel(next,y - 1, x)
+		- get_pixel(prev,y + 1, x) + get_pixel(prev,y - 1, x)) * 0.25;
+	h23 = (get_pixel(current,y + 1, x + 1) - get_pixel(current,y - 1, x + 1)
+		- get_pixel(current,y + 1, x - 1) + get_pixel(current,y - 1, x - 1)) * 0.25;
 
 	// invert hessian
 	float hinv11, hinv12, hinv13, hinv22, hinv23, hinv33;
@@ -188,12 +206,12 @@ tuple<float, float, float> update_feature_point(FeaturePoint& fp, const vector<M
 	float offset_x = -hinv12 * g1 - hinv22 * g2 - hinv23 * g3;
 	float offset_y = -hinv13 * g1 - hinv23 * g3 - hinv33 * g3;
 
-	float interpolated_extrema_val = current.at<float>(x, y)
+	float interpolated_extrema_val = get_pixel(current,y, x)
 		+ 0.5 * (g1 * offset_s + g2 * offset_x + g3 * offset_y);
 	fp.extremum_val = interpolated_extrema_val;
-	fp.row = round(offset_y);
-	fp.col = round(offset_x);
-	fp.layer_index = round(offset_s);
+	fp.row += round(offset_y);
+	fp.col += round(offset_x);
+	fp.layer_index += round(offset_s);
 	return make_tuple(offset_s, offset_x, offset_y);
 }
 
@@ -203,10 +221,10 @@ bool on_edge(FeaturePoint fp, const vector<Mat>& dogs) {
 	const Mat& img = dogs[fp.layer_index];
 	float h11, h12, h22;
 	int x = fp.col, y = fp.row;
-	h11 = img.at<float>(x + 1, y) + img.at<float>(x - 1, y) - 2 * img.at<float>(x, y);
-	h22 = img.at<float>(x, y + 1) + img.at<float>(x, y - 1) - 2 * img.at<float>(x, y);
-	h12 = (img.at<float>(x + 1, y + 1) - img.at<float>(x + 1, y - 1)
-		- img.at<float>(x - 1, y + 1) + img.at<float>(x - 1, y - 1)) * 0.25;
+	h11 = get_pixel(img, y, x + 1) + get_pixel(img, y, x - 1) - 2 * get_pixel(img, y, x);
+	h22 = get_pixel(img, y + 1, x) + get_pixel(img, y - 1, x) - 2 * get_pixel(img, y, x);
+	h12 = (get_pixel(img, y + 1, x + 1) - get_pixel(img, y - 1, x + 1)
+		- get_pixel(img, y + 1, x - 1) + get_pixel(img, y - 1, x - 1)) * 0.25;
 
 	float det_hessian = h11 * h22 - h12 * h12;
 	float tr_hessian = h11 + h22;
@@ -216,4 +234,9 @@ bool on_edge(FeaturePoint fp, const vector<Mat>& dogs) {
 		return true;
 	else
 		return false;
+}
+
+vector<Mat> generate_gradient_pyramid(const vector<Mat>& gaussian_pyramid) {
+	vector<Mat> result;
+	return result;
 }
