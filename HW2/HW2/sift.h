@@ -32,6 +32,8 @@ bool on_edge(FeaturePoint, const const vector<Mat>& dogs);
 
 vector<Mat> generate_gradient_pyramid(const vector<Mat>& gaussian_pyramid);
 
+vector<float> get_orientations(FeaturePoint fp,vector<Mat>& gradient_pyramid);
+
 vector<MatchInfo> match(Mat img1, vector<FeaturePoint> fp1, Mat img2, vector<FeaturePoint> fp2);
 
 #endif

@@ -18,7 +18,9 @@ vector<FeaturePoint> SIFT(Mat img) {
 		imshow(to_string(i), dogs[i]);
 	}
 
-	find_feature_points(dogs);
+	vector<FeaturePoint> feature_points = find_feature_points(dogs);
+
+	vector<Mat> gradient_pyramid = generate_gradient_pyramid(gaussian_pyramid);
 	return result;
 }
 
@@ -237,6 +239,32 @@ bool on_edge(FeaturePoint fp, const vector<Mat>& dogs) {
 }
 
 vector<Mat> generate_gradient_pyramid(const vector<Mat>& gaussian_pyramid) {
-	vector<Mat> result;
+	vector<Mat> result(gaussian_pyramid.size());
+
+	for (int i = 0; i < SIFT_N_OCTAVE; i++) {
+		int octave_base_index = i * SIFT_INTVLS;
+		int img_row = gaussian_pyramid[octave_base_index].rows;
+		int img_col = gaussian_pyramid[octave_base_index].cols;
+		for (int j = 0; j < SIFT_INTVLS; j++) {
+			int index = octave_base_index + j;
+			result[index] = Mat::zeros(Size(img_col,img_row),CV_32FC2);
+			
+			for (int y = 1; y < img_row - 1; y++) {
+				for (int x = 1; x < img_col - 1; x++) {
+					float gx, gy;
+					gx = (gaussian_pyramid[index].at<float>(y,x + 1)
+						- gaussian_pyramid[index].at<float>(y, x - 1)) * 0.5;
+					result[index].at<Vec2f>(y, x)[0] = gx;
+					gy = (gaussian_pyramid[index].at<float>(y + 1, x)
+						- gaussian_pyramid[index].at<float>(y - 1, x)) * 0.5;
+					result[index].at<Vec2f>(y, x)[1] = gy;
+				}
+			}
+		}
+	}
 	return result;
+}
+
+vector<float> get_orientations(FeaturePoint fp, vector<Mat>& gradient_pyramid) {
+	
 }
