@@ -1,13 +1,14 @@
 #ifndef _SIFT_H_
 #define _SIFT_H_
+#define _USE_MATH_DEFINES
+#include <cmath>
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <vector>
 #include <tuple>
 #include <utility>
 #include <algorithm>
-#define _USE_MATH_DEFINES
-#include <cmath>
+
 #include "sift_define.h"
 #include "feature_point.h"
 #include "match_info.h"
@@ -33,6 +34,14 @@ bool on_edge(FeaturePoint, const const vector<Mat>& dogs);
 vector<Mat> generate_gradient_pyramid(const vector<Mat>& gaussian_pyramid);
 
 vector<float> get_orientations(FeaturePoint fp,vector<Mat>& gradient_pyramid);
+
+FeaturePoint compute_keypoint_descriptor(FeaturePoint fp,float orientation, vector<Mat>& gradient_pyramid);
+
+void update_histograms(float hist[SIFT_N_HIST][SIFT_N_HIST][SIFT_N_ORI], float x, float y, float contrib, float theta_mn, float lambda_desc);
+
+vector<uint8_t> hists_to_vec(float histograms[SIFT_N_HIST][SIFT_N_HIST][SIFT_N_ORI]);
+
+Mat draw_keypoints(const Mat& target,vector<FeaturePoint>& fps, int size);
 
 vector<MatchInfo> match(Mat img1, vector<FeaturePoint> fp1, Mat img2, vector<FeaturePoint> fp2);
 

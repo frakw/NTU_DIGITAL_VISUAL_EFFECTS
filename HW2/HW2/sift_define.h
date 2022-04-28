@@ -8,7 +8,7 @@
 
 
 //總共幾個(層)octave
-#define SIFT_N_OCTAVE 3
+#define SIFT_N_OCTAVE 8
 
 // default number of sampled intervals per octave
 //每層octave有幾個layer
@@ -24,6 +24,16 @@
 #define SIFT_N_SPO 3
 
 #define SIFT_MAX_REFINE_ITER 5
+
+#define SIFT_LAMBDA_DESC 6.0f
+
+#define SIFT_N_BINS  36
+
+#define SIFT_LAMBDA_ORI  1.5f
+
+#define SIFT_N_HIST 4
+
+#define SIFT_N_ORI 8
 
 // default threshold on keypoint contrast |D(x)|
 #define SIFT_CONTR_THR 0.04f

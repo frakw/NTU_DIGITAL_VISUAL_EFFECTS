@@ -19,6 +19,7 @@ public:
 
 
 	bool valid = false;
+	FeaturePoint() {}
 	FeaturePoint(int _row, int _col, int _octave, int _layer_index):row(_row),col(_col),octave(_octave),layer_index(_layer_index) {
 		descriptor.reserve(128);
 	}
