@@ -419,7 +419,6 @@ vector<FeaturePoint> detect_local_extrema(const vector<Mat>& dogs, int octaves)
 							FeaturePoint* extrmum = InterploationExtremum(x, y, dogs, index, octave, layer);
 							if (extrmum != nullptr)
 							{
-								//if (passEdgeResponse(extrmum->x, extrmum->y, dog_pyr, index))
 								if (on_edge(*extrmum, dogs, index))
 								{
 									extrmum->val = dogs[index].at<double>(extrmum->y, extrmum->x);
