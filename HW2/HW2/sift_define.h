@@ -12,7 +12,12 @@
 
 // default number of sampled intervals per octave
 //每層octave有幾個layer
-#define SIFT_INTVLS 6
+#define SIFT_INTERVALS 3
+
+
+#define SIFT_LAYER_PER_OCT  (SIFT_INTERVALS + 3)
+
+#define SIFT_DOG_LAYER_PER_OCT  (SIFT_LAYER_PER_OCT - 1)
 
 // default sigma for initial gaussian smoothing
 #define SIFT_SIGMA 1.6f
