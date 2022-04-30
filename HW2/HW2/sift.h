@@ -22,7 +22,12 @@ std::vector<std::pair<int, int>> find_keypoint_matches(std::vector<FeaturePoint>
 	float thresh_relative = 0.7f,
 	float thresh_absolute = 350.0f);
 
+Mat draw_keypoints(const Mat& target, vector<FeaturePoint>& fps, int size);
+
 Mat draw_matches(const Mat& a, const Mat& b, std::vector<FeaturePoint>& kps_a,
+	std::vector<FeaturePoint>& kps_b);
+
+Mat draw_matches2(const Mat& a, const Mat& b, std::vector<FeaturePoint>& kps_a,
 	std::vector<FeaturePoint>& kps_b);
 
 void featureMatch(vector< vector<FeaturePoint> >& img_fps_list);

@@ -872,6 +872,49 @@ void featureMatch(vector< vector<FeaturePoint> >& img_fps_list) {
 }
 
 
+//void detectOutliers(const int offset, const int width, const Feat& feat1, const Feat& feat2, const vector<array<int, 2>>& matches, vector<array<int, 2>>& puredMatches)
+//{
+//	vector<tuple<int, int>> score;
+//	vector<tuple<int, int>> moveVector;
+//	for (int i = 0; i < matches.size(); i++)
+//	{
+//		int x1 = get<1>(feat1.keypoints[matches[i][0]]) + offset;
+//		int y1 = get<0>(feat1.keypoints[matches[i][0]]);
+//		int x2 = get<1>(feat2.keypoints[matches[i][1]]);
+//		int y2 = get<0>(feat2.keypoints[matches[i][1]]);
+//		moveVector.push_back(make_tuple(x1 - x2, y1 - y2));
+//	}
+//
+//
+//	for (int i = 0; i < matches.size(); i++)
+//	{
+//		int tmp = 0;
+//		for (int j = 0; j < matches.size(); j++)
+//		{
+//			int tmp_a = 0;
+//			int tmp_b = 0;
+//			tmp_a = abs(get<0>(moveVector[i]) - get<0>(moveVector[j])) * abs(get<0>(moveVector[i]) - get<0>(moveVector[j]));
+//			tmp_b = abs(get<1>(moveVector[i]) - get<1>(moveVector[j])) * abs(get<1>(moveVector[i]) - get<1>(moveVector[j]));
+//			tmp = (int)sqrt(tmp_a + tmp_b);
+//		}
+//		//cout << tmp << endl;
+//		score.push_back(make_tuple(i, tmp));
+//	}
+//
+//	sort(begin(score), end(score), [](tuple<int, int> const& t1, tuple<int, int> const& t2) {
+//		return get<1>(t1) < get<1>(t2);
+//		});
+//
+//	// 0.05 parrington best
+//	for (int i = 0; i < matches.size() * PURE_THRESH; i++)
+//	{
+//		//cout << get<1>(score[i]) << endl;	
+//		puredMatches.push_back(matches[get<0>(score[i])]);
+//	}
+//	cout << "pured matching: " << puredMatches.size() << endl;
+//}
+//
+//
 
 
 double euclidean_dist(double a[FEATURE_ELEMENT_LENGTH], double b[FEATURE_ELEMENT_LENGTH])
@@ -944,6 +987,55 @@ Mat draw_matches(const Mat& a, const Mat& b, std::vector<FeaturePoint>& kps_a,
 	}
 	return res;
 }
+
+Mat draw_matches2(const Mat& a, const Mat& b, std::vector<FeaturePoint>& kps_a,
+	std::vector<FeaturePoint>& kps_b)
+{
+	Mat res = Mat::zeros(std::max(a.rows, b.rows), a.cols + b.cols, CV_8UC3);
+
+	for (int i = 0; i < a.cols; i++) {
+		for (int j = 0; j < a.rows; j++) {
+			res.at<Vec3b>(j, i)[0] = a.at<Vec3b>(j, i)[0];
+			res.at<Vec3b>(j, i)[1] = a.at<Vec3b>(j, i)[1];
+			res.at<Vec3b>(j, i)[2] = a.at<Vec3b>(j, i)[2];
+		}
+	}
+	for (int i = 0; i < b.cols; i++) {
+		for (int j = 0; j < b.rows; j++) {
+			res.at<Vec3b>(j, a.cols + i)[0] = b.at<Vec3b>(j, i)[0];
+			res.at<Vec3b>(j, a.cols + i)[1] = b.at<Vec3b>(j, i)[1];
+			res.at<Vec3b>(j, a.cols + i)[2] = b.at<Vec3b>(j, i)[2];
+		}
+	}
+
+	int count = 0;
+	for (auto& fp : kps_a) {
+		for (auto& index : fp.best_match) {
+			if (index == -1) continue;
+			FeaturePoint& kp_b = kps_b[index];
+			line(res, Point(fp.dx, fp.dy), Point(a.cols + kp_b.dx, kp_b.dy), CV_RGB(0, 255, 0));
+			//draw_line(res, kp_a.x, kp_a.y, a.width + kp_b.x, kp_b.y);
+
+			count++;
+		}
+	}
+	cout << "match count: " << count << endl;
+	//for (auto& fp : kps_b) {
+	//	for (auto& index : fp.best_match) {
+	//		if (index == -1) continue;
+	//		FeaturePoint& kp_b = kps_a[index];
+	//		line(res, Point(fp.dx, fp.dy), Point(a.cols + kp_b.dx, kp_b.dy), CV_RGB(0, 255, 0));
+	//		//draw_line(res, kp_a.x, kp_a.y, a.width + kp_b.x, kp_b.y);
+
+	//		count++;
+	//	}
+	//}
+
+	cout << "match count: " << count << endl;
+
+	return res;
+}
+
 
 /*
 

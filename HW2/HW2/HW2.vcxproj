@@ -153,6 +153,7 @@
   <ItemGroup>
     <ClCompile Include="blend.cpp" />
     <ClCompile Include="combine.cpp" />
+    <ClCompile Include="exif.cpp" />
     <ClCompile Include="image_stitch.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="sift.cpp" />
@@ -161,6 +162,7 @@
   <ItemGroup>
     <ClInclude Include="blend.h" />
     <ClInclude Include="combine.h" />
+    <ClInclude Include="exif.h" />
     <ClInclude Include="feature_point.h" />
     <ClInclude Include="image_stitch.h" />
     <ClInclude Include="match_info.h" />
