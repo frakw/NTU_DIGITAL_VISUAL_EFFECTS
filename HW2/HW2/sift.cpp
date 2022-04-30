@@ -1,4 +1,4 @@
-#include "sift.h"
+ï»¿#include "sift.h"
 auto get_pixel = [&](const Mat& mat, int row, int col) -> float {
 	if (col < 0) { col = 0; }
 	else if (col >= mat.cols) { col = mat.cols - 1; }
@@ -102,7 +102,7 @@ vector<Mat> get_dog_pyramid(const vector<Mat>& gauss_pyr, int octaves, int inter
 	}
 	return result;
 }
-bool isExtremum(int x, int y, const vector<Mat>& dogs, int index)
+bool is_extremum(int x, int y, const vector<Mat>& dogs, int index)
 {
 	double val = dogs[index].at<double>(y, x);
 
@@ -110,7 +110,7 @@ bool isExtremum(int x, int y, const vector<Mat>& dogs, int index)
 	{
 		for (int i = -1; i <= 1; i++) //prev current next layer
 		{
-			//3*3½d³ò
+			//3*3ç¯„åœ
 			for (int j = -1; j <= 1; j++)
 			{
 				for (int k = -1; k <= 1; k++)
@@ -130,7 +130,7 @@ bool isExtremum(int x, int y, const vector<Mat>& dogs, int index)
 	{
 		for (int i = -1; i <= 1; i++) //prev current next layer
 		{
-			//3*3½d³ò
+			//3*3ç¯„åœ
 			for (int j = -1; j <= 1; j++)
 			{
 				for (int k = -1; k <= 1; k++)
@@ -163,235 +163,119 @@ bool on_edge(FeaturePoint fp, const vector<Mat>& dogs, int index) {
 	if (edgeness < ((SIFT_C_EDGE + 1)*(SIFT_C_EDGE + 1) / SIFT_C_EDGE)) return true;
 	else return false;
 }
-/*************************************************************************************************************************
-*¼Ò²Õ»¡©ú¡G
-*       ¦³­­®t¤À¨D¾É¡H
-**************************************************************************************************************************/
 #define Hat(i, j) (*(H+(i)*3 + (j)))
-
-double PyrAt(const vector<Mat>& pyr, int index, int x, int y)
+array<double,3> derivative_3D(int x, int y, const vector<Mat>& dogs, int index)
 {
-	pixel_t* data = (pixel_t*)pyr[index].data;
-	int      step = pyr[index].step / sizeof(data[0]);
-	pixel_t   val = *(data + y * step + x);
-
-	return val;
+	array<double, 3> result;
+	double Dx = (dogs[index].at<double>(y, x + 1) - dogs[index].at<double>(y, x - 1)) / 2.0;
+	double Dy = (dogs[index].at<double>(y + 1, x) - dogs[index].at<double>(y - 1, x)) / 2.0;
+	double Ds = (dogs[index + 1].at<double>(y, x) - dogs[index - 1].at<double>(y, x)) / 2.0;
+	result[0] = Dx;
+	result[1] = Dy;
+	result[2] = Ds;
+	return result;
 }
-/*************************************************************************************************************************
-*¼Ò²Õ»¡©ú¡G
-*       ¦³­­®t¤À¨D¾É¡H
-**************************************************************************************************************************/
-#define At(index, x, y) (PyrAt(dog_pyr, (index), (x), (y)))
-
-//3ºûD(x)¤@¶¥°¾¾É,dx¦C¦V¶q
-void DerivativeOf3D(int x, int y, const vector<Mat>& dog_pyr, int index, double* dx)
+array<array<double, 3>, 3> hessian_3D(int x, int y, const vector<Mat>& dogs, int index)
 {
-	double Dx = (At(index, x + 1, y) - At(index, x - 1, y)) / 2.0;
-	double Dy = (At(index, x, y + 1) - At(index, x, y - 1)) / 2.0;
-	double Ds = (At(index + 1, x, y) - At(index - 1, x, y)) / 2.0;
-
-	dx[0] = Dx;
-	dx[1] = Dy;
-	dx[2] = Ds;
-}
-
-//3ºûD(x)¤G¶¥°¾¾É¡A§YHessian¯x°}
-void Hessian3D(int x, int y, const vector<Mat>& dog_pyr, int index, double* H)
-{
+	array<array<double, 3>, 3> result;
 	double val, Dxx, Dyy, Dss, Dxy, Dxs, Dys;
 
-	val = At(index, x, y);
+	val = dogs[index].at<double>(y, x);
 
-	Dxx = At(index, x + 1, y) + At(index, x - 1, y) - 2 * val;
-	Dyy = At(index, x, y + 1) + At(index, x, y - 1) - 2 * val;
-	Dss = At(index + 1, x, y) + At(index - 1, x, y) - 2 * val;
+	Dxx = dogs[index].at<double>(y, x + 1) + dogs[index].at<double>(y, x - 1) - 2 * val;
+	Dyy = dogs[index].at<double>(y + 1, x) + dogs[index].at<double>(y - 1, x) - 2 * val;
+	Dss = dogs[index + 1].at<double>(y, x) + dogs[index - 1].at<double>(y, x) - 2 * val;
 
-	Dxy = (At(index, x + 1, y + 1) + At(index, x - 1, y - 1)
-		- At(index, x + 1, y - 1) - At(index, x - 1, y + 1)) / 4.0;
+	Dxy = (dogs[index].at<double>(y + 1, x + 1) + dogs[index].at<double>(y - 1, x - 1)
+		- dogs[index].at<double>(y - 1, x + 1) - dogs[index].at<double>(y + 1, x - 1)) / 4.0;
 
-	Dxs = (At(index + 1, x + 1, y) + At(index - 1, x - 1, y)
-		- At(index - 1, x + 1, y) - At(index + 1, x - 1, y)) / 4.0;
+	Dxs = (dogs[index + 1].at<double>(y, x + 1) + dogs[index - 1].at<double>(y, x - 1)
+		- dogs[index - 1].at<double>(y, x + 1) - dogs[index + 1].at<double>(y, x - 1)) / 4.0;
 
-	Dys = (At(index + 1, x, y + 1) + At(index - 1, x, y - 1)
-		- At(index + 1, x, y - 1) - At(index - 1, x, y + 1)) / 4.0;
+	Dys = (dogs[index + 1].at<double>(y + 1, x) + dogs[index - 1].at<double>(y - 1, x)
+		- dogs[index + 1].at<double>(y - 1, x) - dogs[index - 1].at<double>(y + 1, x)) / 4.0;
 
-	Hat(0, 0) = Dxx;
-	Hat(1, 1) = Dyy;
-	Hat(2, 2) = Dss;
+	result[0][0] = Dxx;
+	result[1][1] = Dyy;
+	result[2][2] = Dss;
 
-	Hat(1, 0) = Hat(0, 1) = Dxy;
-	Hat(2, 0) = Hat(0, 2) = Dxs;
-	Hat(2, 1) = Hat(1, 2) = Dys;
+	result[1][0] = result[0][1] = Dxy;
+	result[2][0] = result[0][2] = Dxs;
+	result[2][1] = result[1][2] = Dys;
+	return result;
 }
-/*************************************************************************************************************************
-*¼Ò²Õ»¡©ú¡G
-*       4.4 ¤T¶¥¯x°}¨D°f
-**************************************************************************************************************************/
-#define HIat(i, j) (*(H_inve+(i)*3 + (j)))
-//3*3¶¥¯x°}¨D°f
-bool Inverse3D(const double* H, double* H_inve)
+array<array<double, 3>, 3>  inverse_3D(array<array<double, 3>, 3> H)
 {
+	array<array<double, 3>, 3> result;
 
-	double A = Hat(0, 0) * Hat(1, 1) * Hat(2, 2)
-		+ Hat(0, 1) * Hat(1, 2) * Hat(2, 0)
-		+ Hat(0, 2) * Hat(1, 0) * Hat(2, 1)
-		- Hat(0, 0) * Hat(1, 2) * Hat(2, 1)
-		- Hat(0, 1) * Hat(1, 0) * Hat(2, 2)
-		- Hat(0, 2) * Hat(1, 1) * Hat(2, 0);
+	double A = 
+		  H[0][0] * H[1][1] * H[2][2]
+		+ H[0][1] * H[1][2] * H[2][0]
+		+ H[0][2] * H[1][0] * H[2][1]
+		- H[0][0] * H[1][2] * H[2][1]
+		- H[0][1] * H[1][0] * H[2][2]
+		- H[0][2] * H[1][1] * H[2][0];
 
-	if (fabs(A) < 1e-10) return false;
+	result[0][0] =	(H[1][1] * H[2][2] - H[2][1] * H[1][2]) / A;
+	result[0][1] = -(H[0][1] * H[2][2] - H[2][1] * H[0][2]) / A;
+	result[0][2] =	(H[0][1] * H[1][2] - H[0][2] * H[1][1]) / A;
 
-	HIat(0, 0) = Hat(1, 1) * Hat(2, 2) - Hat(2, 1) * Hat(1, 2);
-	HIat(0, 1) = -(Hat(0, 1) * Hat(2, 2) - Hat(2, 1) * Hat(0, 2));
-	HIat(0, 2) = Hat(0, 1) * Hat(1, 2) - Hat(0, 2) * Hat(1, 1);
+	result[1][0] =	(H[1][2] * H[2][0] - H[2][2] * H[1][0]) / A;
+	result[1][1] = -(H[0][2] * H[2][0] - H[0][0] * H[2][2]) / A;
+	result[1][2] =	(H[0][2] * H[1][0] - H[0][0] * H[1][2]) / A;
 
-	HIat(1, 0) = Hat(1, 2) * Hat(2, 0) - Hat(2, 2) * Hat(1, 0);
-	HIat(1, 1) = -(Hat(0, 2) * Hat(2, 0) - Hat(0, 0) * Hat(2, 2));
-	HIat(1, 2) = Hat(0, 2) * Hat(1, 0) - Hat(0, 0) * Hat(1, 2);
-
-	HIat(2, 0) = Hat(1, 0) * Hat(2, 1) - Hat(1, 1) * Hat(2, 0);
-	HIat(2, 1) = -(Hat(0, 0) * Hat(2, 1) - Hat(0, 1) * Hat(2, 0));
-	HIat(2, 2) = Hat(0, 0) * Hat(1, 1) - Hat(0, 1) * Hat(1, 0);
-
-	for (int i = 0; i < 9; i++)
-	{
-		*(H_inve + i) /= A;
-	}
-	return true;
+	result[2][0] =	(H[1][0] * H[2][1] - H[1][1] * H[2][0]) / A;
+	result[2][1] = -(H[0][0] * H[2][1] - H[0][1] * H[2][0]) / A;
+	result[2][2] =	(H[0][0] * H[1][1] - H[0][1] * H[1][0]) / A;
+	return result;
 }
-/*************************************************************************************************************************
-*¼Ò²Õ»¡©ú¡G
-*
-**************************************************************************************************************************/
-//­pºâx^
-void GetOffsetX(int x, int y, const vector<Mat>& dog_pyr, int index, double* offset_x)
-{
-	//x^ = -H^(-1) * dx; dx = (Dx, Dy, Ds)^T
-	double H[9], H_inve[9] = { 0 };
-	Hessian3D(x, y, dog_pyr, index, H);
-	Inverse3D(H, H_inve);
-	double dx[3];
-	DerivativeOf3D(x, y, dog_pyr, index, dx);
-
-	for (int i = 0; i < 3; i++)
-	{
-		offset_x[i] = 0.0;
-		for (int j = 0; j < 3; j++)
-		{
-			offset_x[i] += H_inve[i * 3 + j] * dx[j];
+array<double, 3> get_offset(int x, int y, const vector<Mat>& dog_pyr, int index){
+	array<array<double, 3>, 3> H = hessian_3D(x, y, dog_pyr, index);
+	array<array<double, 3>, 3> H_inv = inverse_3D(H);
+	array<double, 3> dx = derivative_3D(x, y, dog_pyr, index);
+	array<double, 3> result;
+	for (int i = 0; i < 3; i++) {
+		result[i] = 0.0f;
+		for (int j = 0; j < 3; j++) {
+			result[i] -= H_inv[i][j] * dx[j];
 		}
-		offset_x[i] = -offset_x[i];
 	}
+	return result;
 }
 
-//­pºâ|D(x^)|
-double GetFabsDx(int x, int y, const vector<Mat>& dog_pyr, int index, const double* offset_x)
-{
-	//|D(x^)|=D + 0.5 * dx * offset_x; dx=(Dx, Dy, Ds)^T
-	double dx[3];
-	DerivativeOf3D(x, y, dog_pyr, index, dx);
-
+double get_fabs_dx(int x, int y, const vector<Mat>& dogs, int index,const array<double, 3>& offset_x){
+	array<double, 3> dx = derivative_3D(x, y, dogs, index);
 	double term = 0.0;
-	for (int i = 0; i < 3; i++)
+	for (int i = 0; i < 3; i++) {
 		term += dx[i] * offset_x[i];
-
-	pixel_t* data = (pixel_t*)dog_pyr[index].data;
-	int step = dog_pyr[index].step / sizeof(data[0]);
-	pixel_t val = *(data + y * step + x);
-
+	}
+	double val = dogs[index].at<double>(y, x);
 	return fabs(val + 0.5 * term);
 }
-/*************************************************************************************************************************
-*¼Ò²Õ»¡©ú¡G
-*       ¼Ò²Õ¥|ªº²Ä¤G¨B:­×¥¿·¥­ÈÂI¡A§R°£¤£Ã­©wªºÂI
-*¥\¯à»¡©ú:
-*       1--®Ú¾Ú°ª´µ®t¤À¨ç¦¡²£¥Íªº·¥­ÈÂI¨Ã¤£¥ş³£¬OÃ­©wªº¯S¼xÂI¡A¦]¬°¬Y¨Ç·¥­ÈÂIªºÅTÀ³¸û®z¡A¦Ó¥BDOG¹Bºâ¤¸·|²£¥Í¸û±jªºÃä½tÅTÀ³
-*       2--¥H¤W¤èªkÀË´ú¨ìªº·¥­ÈÂI¬OÂ÷´²ªÅ¶¡ªº·¥­ÈÂI¡A¤U­±³q¹LÀÀ¦X¤Tºû¤G¦¸¨ç¦¡¨Óºë½T©w¦ìÃöÁäÂIªº¦ì¸m©M¤Ø«×¡A¦P®É¥h°£¹ï¤ñ«×
-*          §C©M¤£Ã­©wªºÃä½tÅTÀ³ÂI(¦]¬°DOG¹Bºâ¤¸·|²£¥Í¸û±jªºÃä½tÅTÀ³)¡A¥H¼W±j¤Ç°tªºÃ­©w©Ê¡B´£°ª§Ü¾¸Ánªº¯à¤O¡C
-*       3--­×¥¿·¥­ÈÂI¡A§R°£¤£Ã­©wÂI¡A|D(x)| < 0.03 Lowe 2004
-**************************************************************************************************************************/
-FeaturePoint* InterploationExtremum(int x, int y, const vector<Mat>& dog_pyr, int index, int octave, int interval, double dxthreshold = 0.03)
-{
-	//­pºâx=(x,y,sigma)^T
-	//x^ = -H^(-1) * dx; dx = (Dx, Dy, Ds)^T
-	double offset_x[3] = { 0 };
 
+FeaturePoint* interploation_extremum(int x, int y, const vector<Mat>& dog_pyr, int index, int octave, int interval){
+	array<double, 3> offset;
 	const Mat& mat = dog_pyr[index];
-
 	int idx = index;
 	int intvl = interval;
 	int i = 0;
-
-	while (i < 5)
-	{
-		GetOffsetX(x, y, dog_pyr, idx, offset_x);
-		//4. Accurate keypoint localization.  Lowe
-		//¦pªGoffset_x ªº¥ô¤@ºû«×¤j©ó0.5¡Ait means that the extremum lies closer to a different sample point.
-		if (fabs(offset_x[0]) < 0.5 && fabs(offset_x[1]) < 0.5 && fabs(offset_x[2]) < 0.5)
-			break;
-
-		//¥Î©P³òªºÂI¥N´À
-		x += cvRound(offset_x[0]);
-		y += cvRound(offset_x[1]);
-		interval += cvRound(offset_x[2]);
-
+	while (i < 5){
+		offset = get_offset(x, y, dog_pyr, idx);
+		if (fabs(offset[0]) < 0.5f && fabs(offset[1]) < 0.5f && fabs(offset[2]) < 0.5f) break;
+		x += cvRound(offset[0]);
+		y += cvRound(offset[1]);
+		interval += cvRound(offset[2]);
 		idx = index - intvl + interval;
-		//¦¹³B«OÃÒÀË´úÃä®É x+1,y+1©Mx-1, y-1¦³®Ä
-		if (interval < 1 || interval > 3 || x >= mat.cols - 1 || x < 2 || y >= mat.rows - 1 || y < 2)
-		{
+		if (interval < 1 || interval > 3 || x >= mat.cols - 1 || x < 2 || y >= mat.rows - 1 || y < 2){
 			return nullptr;
 		}
-
 		i++;
 	}
-
-	//Â«§ï¥¢±Ñ
-	if (i >= 5)
-		return nullptr;
-
-	//rejecting unstable extrema
-	//|D(x^)| < 0.03¨ú¸gÅç­È
-	if (GetFabsDx(x, y, dog_pyr, idx, offset_x) < dxthreshold / 3)
-	{
-		return nullptr;
-	}
-
-	FeaturePoint* keypoint = new FeaturePoint;
-
-
-	keypoint->x = x;
-	keypoint->y = y;
-
-	keypoint->offset_x = offset_x[0];
-	keypoint->offset_y = offset_x[1];
-
-	keypoint->interval = interval;
-	keypoint->offset_interval = offset_x[2];
-
-	keypoint->octave = octave;
-
-	keypoint->dx = (x + offset_x[0]) * pow(2.0, octave);
-	keypoint->dy = (y + offset_x[1]) * pow(2.0, octave);
-
-	return keypoint;
+	if (i >= 5) return nullptr;
+	if (get_fabs_dx(x, y, dog_pyr, idx, offset) < SIFT_CONTR_THR / 3)return nullptr;
+	FeaturePoint* fp = new FeaturePoint(x,y, offset[0], offset[1], interval, offset[2],octave);
+	return fp;
 }
-
-
-
-
-
-
-
-
-
-/*************************************************************************************************************************
-*¼Ò²Õ»¡©ú¡G
-*       ¼Ò²Õ¥|¡G3.5 ªÅ¶¡·¥­ÈÂIªºÀË´ú(ÃöÁäÂIªºªì¨B±´¬d)
-*¥\¯à»¡©ú¡G
-*       1--ÃöÁäÂI¬O¥ÑDOGªÅ¶¡ªº°Ï°ì©Ê·¥­ÈÂI²Õ¦¨ªº¡AÃöÁäÂIªºªì¨B±´¬d¬O³q¹L¦P¤@²Õ¤º¦UDoG¬Û¾F¨â¼h¼v¶H¤§¶¡ªº¤ñ¸û§¹¦¨ªº¡C¬°¤F´M§äDoG
-*          ¨ç¦¡ªº·¥­ÈÂI¡A¨C¤@­Óµe¯ÀÂI³£­n©M¥¦©Ò¦³¬Û¾FªºÂI¤ñ¸û¡A¬İ¨ä¬O§_¤ñ¥¦ªº¼v¶H°ì©M¤Ø«×°ì¬Û¾FªºÂI¤jÁÙ¬O¤p¡C
-*       2--·íµM³o¼Ë²£¥Íªº·¥­ÈÂI¨Ã¤£¥ş³£¬OÃ­©wªº¯S¼xÂI¡A¦]¬°¬Y¨Ç·¥­ÈÂI¬ÛÀ³¸û®z¡A¦Ó¥BDOG¹Bºâ¤¸·|²£¥Í¸û±jªºÃä½tÅTÀ³¡C
-**************************************************************************************************************************/
 
 #define IMG_BORDER 5
 #define DXTHRESHOLD 0.03
@@ -402,21 +286,20 @@ vector<FeaturePoint> detect_local_extrema(const vector<Mat>& dogs, int octaves)
 	int count = 0;
 	for (int octave = 0; octave < octaves; octave++)
 	{
-		//²Ä¤@¼h©M³Ì«á¤@¼h·¥­È©¿²¤
 		for (int layer = 1; layer < SIFT_DOG_LAYER_PER_OCT - 1; layer++)
 		{
-			int index = octave * SIFT_DOG_LAYER_PER_OCT + layer;                              //[1]¹Ï¤ù¯Á¤Şªº©w¦ì
+			int index = octave * SIFT_DOG_LAYER_PER_OCT + layer;
 
 			for (int y = IMG_BORDER; y < dogs[index].rows - IMG_BORDER; y++)
 			{
 				for (int x = IMG_BORDER; x < dogs[index].cols - IMG_BORDER; x++)
 				{
-					pixel_t val = dogs[index].at<double>(y, x);
-					if (std::fabs(val) > thresh)                           //[4]±Æ°£ìH­È¹L¤pªºÂI
+					double val = dogs[index].at<double>(y, x);
+					if (std::fabs(val) > thresh)
 					{
-						if (isExtremum(x, y, dogs, index))                //[5]§PÂ_¬O§_¬O·¥­È
+						if (is_extremum(x, y, dogs, index))
 						{
-							FeaturePoint* extrmum = InterploationExtremum(x, y, dogs, index, octave, layer);
+							FeaturePoint* extrmum = interploation_extremum(x, y, dogs, index, octave, layer);
 							if (extrmum != nullptr)
 							{
 								if (on_edge(*extrmum, dogs, index))
@@ -434,102 +317,51 @@ vector<FeaturePoint> detect_local_extrema(const vector<Mat>& dogs, int octaves)
 						count++;
 					}
 				}
-			}//for y
+			}
 
 		}
 	}
 	cout << "count: " << count << endl;
 	return result;
 }
-
-/*************************************************************************************************************************
-*¼Ò²Õ»¡©ú¡G
-*       ¼Ò²Õ¤­¡G
-*¥\¯à»¡©ú¡G
-*
-**************************************************************************************************************************/
-void CalculateScale(vector<FeaturePoint>& features, double sigma = SIFT_SIGMA, int intervals = SIFT_N_SPO)
+void calculate_scale_half_features(vector<FeaturePoint>& features)
 {
 	double intvl = 0;
 	for (int i = 0; i < features.size(); i++)
 	{
 		intvl = features[i].interval + features[i].offset_interval;
-		features[i].scale = sigma * pow(2.0, features[i].octave + intvl / intervals);
-		features[i].octave_scale = sigma * pow(2.0, intvl / intervals);
-	}
-
-}
-
-//¹ïÂX¤jªº¼v¶H¯S¼xÁY©ñ
-void HalfFeatures(vector<FeaturePoint>& features)
-{
-	for (int i = 0; i < features.size(); i++)
-	{
+		features[i].scale = SIFT_SIGMA * pow(2.0, features[i].octave + intvl / SIFT_INTERVALS);
+		features[i].octave_scale = SIFT_SIGMA * pow(2.0, intvl / SIFT_INTERVALS);
 		features[i].dx /= 2;
 		features[i].dy /= 2;
-
 		features[i].scale /= 2;
 	}
+
 }
-/********************************************************************************************************************************
-*¼Ò²Õ»¡©ú:
-*        ¼Ò²Õ¤»---¨BÆJ2¡G­pºâÃöÁäÂIªº±è«×©M±è«×¤è¦V
-*¥\¯à»¡©ú¡G
-*        1¡^­pºâÃöÁäÂI(x,y)³Bªº±è«×´T­È©M±è«×¤è¦V
-*        2¡^±N©Ò­pºâ¥X¨Óªº±è«×´T­È©M±è«×¤è¦VÀx¦s¦bÅÜ¼Æmag©Mori¤¤
-*********************************************************************************************************************************/
-bool CalcGradMagOri(const Mat& gauss, int x, int y, double& mag, double& ori)
+
+
+array<double, SIFT_N_BINS> get_orientation_histogram(const Mat& gauss, int x, int y, int bins, int radius, double sigma)
 {
-	if (x > 0 && x < gauss.cols - 1 && y > 0 && y < gauss.rows - 1)
-	{
-		pixel_t* data = (pixel_t*)gauss.data;
-		int step = gauss.step / sizeof(*data);
-
-		double dx = *(data + step * y + (x + 1)) - (*(data + step * y + (x - 1)));           //[1]§Q¥ÎX¤è¦V¤Wªº®t¤À¥N´À·L¤Àdx
-		double dy = *(data + step * (y + 1) + x) - (*(data + step * (y - 1) + x));           //[2]§Q¥ÎY¤è¦V¤Wªº®t¤À¥N´À·L¤Àdy
-
-		mag = sqrt(dx * dx + dy * dy);                                          //[3]­pºâ¸ÓÃöÁäÂIªº±è«×´T­È
-		ori = atan2(dy, dx);                                                //[4]­pºâ¸ÓÃöÁäÂIªº±è«×¤è¦V
-		return true;
-	}
-	else
-		return false;
-}
-/********************************************************************************************************************************
-*¼Ò²Õ»¡©ú:
-*        ¼Ò²Õ¤»---¨BÆJ1¡G­pºâ±è«×ªº¤è¦Vª½¤è¹Ï
-*¥\¯à»¡©ú¡G
-*        1¡^ª½¤è¹Ï¥H¨C10«×¬°¤@­Ó¬W¡A¦@36­Ó¬W¡A¬W¥Nªíªº¤è¦V¬°¬°µe¯ÀÂIªº±è«×¤è¦V¡A¬Wªºªøµu¥Nªí¤F±è«×´T­È¡C
-*        2¡^®Ú¾ÚLoweªº«ØÄ³¡Aª½¤è¹Ï²Î­p±Ä¥Î3*1.5*sigma
-*        3¡^¦bª½¤è¹Ï²Î­p®É¡A¨C¬Û¾F¤T­Óµe¯ÀÂI±Ä¥Î°ª´µ¥[Åv¡A®Ú¾ÚLoweªº«ØÄ³¡A¼ÒªO±Ä¥Î[0.25,0.5,0.25],¨Ã¥B³sÄò¥[Åv¨â¦¸
-*µ²    ½×¡G
-*        ¼v¶HªºÃöÁäÂIÀË´ú§¹²¦«á¡A¨C­ÓÃöÁäÂI´N¾Ö¦³¤T­Ó¸ê°T¡G¦ì¸m¡B¤Ø«×¡B¤è¦V¡F¦P®É¤]´N¨ÏÃöÁäÂI¨ã³Æ¥­²¾¡BÁY©ñ©M±ÛÂà¤£ÅÜ©Ê
-*********************************************************************************************************************************/
-double* CalculateOrientationHistogram(const Mat& gauss, int x, int y, int bins, int radius, double sigma)
-{
-	double* hist = new double[bins];                           //[1]°ÊºA¤À°t¤@­Ódouble«¬§Oªº°}¦C
-	for (int i = 0; i < bins; i++)                               //[2]µ¹³o­Ó°}¦Cªì©l¤Æ
-		*(hist + i) = 0.0;
-
-	double  mag;                                                //[3]ÃöÁäÂIªº±è«×´T­È                                          
-	double  ori;                                                //[4]ÃöÁäÂIªº±è«×¤è¦V
-	double  weight;
-
-	int           bin;
-	const double PI2 = 2.0 * CV_PI;
-	double        econs = -1.0 / (2.0 * sigma * sigma);
+	array<double, SIFT_N_BINS> hist;
+	for (int i = 0; i < bins; i++)
+		hist[i] = 0.0f;
 
 	for (int i = -radius; i <= radius; i++)
 	{
 		for (int j = -radius; j <= radius; j++)
 		{
-			if (CalcGradMagOri(gauss, x + i, y + j, mag, ori))       //[5]­pºâ¸ÓÃöÁäÂIªº±è«×´T­È©M¤è¦V
+			int row = y + j;
+			int col = x + i;
+			if (row > 0 && row < gauss.rows - 1 && col > 0 && col < gauss.cols - 1)
 			{
-				weight = exp((i * i + j * j) * econs);
-				bin = cvRound(bins * (CV_PI - ori) / PI2);     //[6]¹ï¤@­Ódouble¦æªº¼Æ¶i¦æ¥|±Ë¤­¤J¡Aªğ¦^¤@­Ó¾ã§Îªº¼Æ
+				double dx = gauss.at<double>(row, col + 1) - gauss.at<double>(row, col - 1);
+				double dy = gauss.at<double>(row + 1, col) - gauss.at<double>(row - 1, col);
+				double mag = sqrt(dx * dx + dy * dy);
+				double ori = atan2(dy, dx);
+				double weight = exp((i * i + j * j) * (-1.0 / (2.0 * sigma * sigma)));
+				int bin = cvRound(bins * (CV_PI - ori) / (2.0 * CV_PI));     //[6]å°ä¸€å€‹doubleè¡Œçš„æ•¸é€²è¡Œå››æ¨äº”å…¥ï¼Œè¿”å›ä¸€å€‹æ•´å½¢çš„æ•¸
 				bin = bin < bins ? bin : 0;
-
-				hist[bin] += mag * weight;                      //[7]²Î­p±è«×ªº¤è¦Vª½¤è¹Ï
+				hist[bin] += mag * weight;                      //[7]çµ±è¨ˆæ¢¯åº¦çš„æ–¹å‘ç›´æ–¹åœ–
 			}
 		}
 	}
@@ -537,130 +369,68 @@ double* CalculateOrientationHistogram(const Mat& gauss, int x, int y, int bins, 
 	return hist;
 }
 /********************************************************************************************************************************
-*¼Ò²Õ»¡©ú:
-*        ¼Ò²Õ¤»---¨BÆJ3¡G¹ï±è«×¤è¦Vª½¤è¹Ï¶i¦æ³sÄò¨â¦¸ªº°ª´µ¥­·Æ
-*¥\¯à»¡©ú¡G
-*        1¡^¦bª½¤è¹Ï²Î­p®É¡A¨C¬Û¾F¤T­Óµe¯ÀÂI±Ä¥Î°ª´µ¥[Åv¡A®Ú¾ÚLoweªº«ØÄ³¡A¼ÒªO±Ä¥Î[0.25,0.5,0.25],¨Ã¥B³sÄò¥[Åv¨â¦¸
-*        2¡^¹ïª½¤è¹Ï¶i¦æ¨â¦¸¥­·Æ
-*********************************************************************************************************************************/
-void GaussSmoothOriHist(double* hist, int n)
-{
-	double prev = hist[n - 1];
-	double temp;
-	double h0 = hist[0];
-
-	for (int i = 0; i < n; i++)
-	{
-		temp = hist[i];
-		hist[i] = 0.25 * prev + 0.5 * hist[i] + 0.25 * (i + 1 >= n ? h0 : hist[i + 1]);//¹ï¤è¦Vª½¤è¹Ï¶i¦æ°ª´µ¥­·Æ
-		prev = temp;
-	}
-}
-/********************************************************************************************************************************
-*¼Ò²Õ»¡©ú:
-*        ¼Ò²Õ¤»---¨BÆJ4¡G­pºâ¤è¦Vª½¤è¹Ï¤¤ªº¥D¤è¦V
-*********************************************************************************************************************************/
-double DominantDirection(double* hist, int n)
-{
-	double maxd = hist[0];
-	for (int i = 1; i < n; i++)
-	{
-		if (hist[i] > maxd)                            //¨D¨ú36­Ó¬W¤¤ªº³Ì¤j®p­È
-			maxd = hist[i];
-	}
-	return maxd;
-}
-void CopyKeypoint(const FeaturePoint& src, FeaturePoint& dst)
-{
-	dst.dx = src.dx;
-	dst.dy = src.dy;
-
-	dst.interval = src.interval;
-	dst.octave = src.octave;
-	dst.octave_scale = src.octave_scale;
-	dst.offset_interval = src.offset_interval;
-
-	dst.offset_x = src.offset_x;
-	dst.offset_y = src.offset_y;
-
-	dst.ori = src.ori;
-	dst.scale = src.scale;
-	dst.val = src.val;
-	dst.x = src.x;
-	dst.y = src.y;
-}
-/********************************************************************************************************************************
-*¼Ò²Õ»¡©ú:
-*        ¼Ò²Õ¤»---¨BÆJ5¡G­pºâ§ó¥[ºë½TªºÃöÁäÂI¥D¤è¦V----©ßª«´¡­È
-*¥\¯à»¡©ú¡G
-*        1¡^¤è¦Vª½¤è¹Ïªº®p­È«h¥Nªí¤F¸Ó¯S¼xÂIªº¤è¦V¡A¥Hª½¤è¹Ï¤¤ªº³Ì¤j­È§@¬°¸ÓÃöÁäÂIªº¥D¤è¦V¡C¬°¤F¼W±j¤Ç°tªº¾|´Î©Ê¡A¥u«O¯d®p­È¤j©ó¥D
-*           ¤è¦V®p­È80%ªº¤è¦V§@¬°§ïÃöÁäÂIªº»²¤è¦V¡C¦]¦¹¡A¹ï©ó¦P¤@±è«×­È±o¦h­Ó®p­ÈªºÃöÁäÂI¦ì¸m¡A¦b¬Û¦P¦ì¸m©M¤Ø«×±N·|¦³¦h­ÓÃöÁäÂI³Q
-*           «Ø¥ß¦ı¤è¦V¤£¦P¡C¶È¦³15%ªºÃöÁäÂI³Q½á¤©¦h­Ó¤è¦V¡A¦ı¬O¥i¥H©úÅãªº´£°ªÃöÁäÂIªºÃ­©w©Ê¡C
-*        2¡^¦b¹ê»Úµ{¦¡³]­p¤¤¡A´N¬O§â¸ÓÃöÁäÂI½Æ»s¦¨¦h¥÷ÃöÁäÂI¡A¨Ã±N¤è¦V­È¤À§O½áµ¹³o¨Ç½Æ»s«áªºÃöÁäÂI
-*        3¡^¨Ã¥B¡AÂ÷´²ªº±è«×ª½¤è¹Ï­n¶i¦æ¡i´¡­ÈÀÀ¦X³B²z¡j¡A¨Ó¨D±o§ó¥[ºë½Tªº¤è¦V¨¤«×­È
+*æ¨¡çµ„èªªæ˜:
+*        æ¨¡çµ„å…­---æ­¥é©Ÿ5ï¼šè¨ˆç®—æ›´åŠ ç²¾ç¢ºçš„é—œéµé»ä¸»æ–¹å‘----æ‹‹ç‰©æ’å€¼
+*åŠŸèƒ½èªªæ˜ï¼š
+*        1ï¼‰æ–¹å‘ç›´æ–¹åœ–çš„å³°å€¼å‰‡ä»£è¡¨äº†è©²ç‰¹å¾µé»çš„æ–¹å‘ï¼Œä»¥ç›´æ–¹åœ–ä¸­çš„æœ€å¤§å€¼ä½œç‚ºè©²é—œéµé»çš„ä¸»æ–¹å‘ã€‚ç‚ºäº†å¢å¼·åŒ¹é…çš„é­¯æ£’æ€§ï¼Œåªä¿ç•™å³°å€¼å¤§æ–¼ä¸»
+*           æ–¹å‘å³°å€¼80%çš„æ–¹å‘ä½œç‚ºæ”¹é—œéµé»çš„è¼”æ–¹å‘ã€‚å› æ­¤ï¼Œå°æ–¼åŒä¸€æ¢¯åº¦å€¼å¾—å¤šå€‹å³°å€¼çš„é—œéµé»ä½ç½®ï¼Œåœ¨ç›¸åŒä½ç½®å’Œå°ºåº¦å°‡æœƒæœ‰å¤šå€‹é—œéµé»è¢«
+*           å»ºç«‹ä½†æ–¹å‘ä¸åŒã€‚åƒ…æœ‰15%çš„é—œéµé»è¢«è³¦äºˆå¤šå€‹æ–¹å‘ï¼Œä½†æ˜¯å¯ä»¥æ˜é¡¯çš„æé«˜é—œéµé»çš„ç©©å®šæ€§ã€‚
+*        2ï¼‰åœ¨å¯¦éš›ç¨‹å¼è¨­è¨ˆä¸­ï¼Œå°±æ˜¯æŠŠè©²é—œéµé»è¤‡è£½æˆå¤šä»½é—œéµé»ï¼Œä¸¦å°‡æ–¹å‘å€¼åˆ†åˆ¥è³¦çµ¦é€™äº›è¤‡è£½å¾Œçš„é—œéµé»
+*        3ï¼‰ä¸¦ä¸”ï¼Œé›¢æ•£çš„æ¢¯åº¦ç›´æ–¹åœ–è¦é€²è¡Œã€æ’å€¼æ“¬åˆè™•ç†ã€‘ï¼Œä¾†æ±‚å¾—æ›´åŠ ç²¾ç¢ºçš„æ–¹å‘è§’åº¦å€¼
 *********************************************************************************************************************************/
 #define Parabola_Interpolate(l, c, r) (0.5*((l)-(r))/((l)-2.0*(c)+(r))) 
-void CalcOriFeatures(const FeaturePoint& keypoint, vector<FeaturePoint>& features, const double* hist, int n, double mag_thr)
-{
-	double  bin;
-	double  PI2 = CV_PI * 2.0;
-	int l;
-	int r;
-
-	for (int i = 0; i < n; i++)
-	{
-		l = (i == 0) ? n - 1 : i - 1;
-		r = (i + 1) % n;
-
-		//hist[i]¬O·¥­È
-		if (hist[i] > hist[l] && hist[i] > hist[r] && hist[i] >= mag_thr)
-		{
-			bin = i + Parabola_Interpolate(hist[l], hist[i], hist[r]);
+vector<FeaturePoint> CalcOriFeatures(const FeaturePoint& fp, const array<double, SIFT_N_BINS> hist, double mag_thr){
+	vector<FeaturePoint> result;
+	int n = hist.size();
+	for (int i = 0; i < n; i++){
+		int l = (i == 0) ? n - 1 : i - 1;
+		int r = (i + 1) % n;
+		if (hist[i] > hist[l] && hist[i] > hist[r] && hist[i] >= mag_thr){
+			double bin = i + Parabola_Interpolate(hist[l], hist[i], hist[r]);
 			bin = (bin < 0) ? (bin + n) : (bin >= n ? (bin - n) : bin);
-
-			FeaturePoint new_key;
-
-			CopyKeypoint(keypoint, new_key);
-
-			new_key.ori = ((PI2 * bin) / n) - CV_PI;
-			features.push_back(new_key);
+			FeaturePoint new_fp;
+			new_fp = fp;
+			new_fp.ori = ((CV_PI * 2.0f * bin) / n) - CV_PI;
+			result.push_back(new_fp);
 		}
 	}
+	return result;
 }
 /********************************************************************************************************************************
-*¼Ò²Õ»¡©ú:
-*        ¼Ò²Õ¤»¡G5 ÃöÁäÂI¤è¦V¤À°t
-*¥\¯à»¡©ú¡G
-*        1¡^¬°¤F¨Ï´y­z²Å¨ã¦³±ÛÂà¤£ÅÜ©Ê¡A»İ­n§Q¥Î¼v¶Hªº°Ï°ì©Ê¯S¼x¬°¨C¤@­ÓÃöÁäÂI¤À°t¤@­Ó°ò·Ç¤è¦V¡C¨Ï¥Î¼v¶H±è«×ªº¤èªk¨D¨ú°Ï°ì©Êµ²ºcªºÃ­©w
-*           ¤è¦V¡C
-*        2¡^¹ï©ó¦bDOGª÷¦r¶ğ¤¤ÀË´ú¥X¨ÓªºÃöÁäÂI¡A±Ä¶°¨ä©Ò¦b°ª´µª÷¦r¶ğ¼v¶H3sigma¾F°ìµøµ¡¤ºµe¯Àªº±è«×©M¤è¦V±è«×©M¤è¦V¯S¼x¡C
-*        3¡^±è«×ªº¼Ò©M¤è¦V¦p¤U©Ò¥Ü:
-*        4) ¦b§¹¦¨ÃöÁäÂIªº±è«×­pºâ«á¡A¨Ï¥Îª½¤è¹Ï²Î­p¾F°ì¤ºµe¯Àªº±è«×©M¤è¦V¡C±è«×ª½¤è¹Ï±N0~360«×ªº¤è¦V½d³ò¤À¬°36­Ó¬W¡A¨ä¤¤¨C¬W10«×¡A
-*           ¦p¹Ï5.1©Ò¥Ü¡Aª½¤è¹Ïªº®p­È¤è¦V¥Nªí¤FÃöÁäÂIªº¥D¤è¦V
+*æ¨¡çµ„èªªæ˜:
+*        æ¨¡çµ„å…­ï¼š5 é—œéµé»æ–¹å‘åˆ†é…
+*åŠŸèƒ½èªªæ˜ï¼š
+*        1ï¼‰ç‚ºäº†ä½¿æè¿°ç¬¦å…·æœ‰æ—‹è½‰ä¸è®Šæ€§ï¼Œéœ€è¦åˆ©ç”¨å½±è±¡çš„å€åŸŸæ€§ç‰¹å¾µç‚ºæ¯ä¸€å€‹é—œéµé»åˆ†é…ä¸€å€‹åŸºæº–æ–¹å‘ã€‚ä½¿ç”¨å½±è±¡æ¢¯åº¦çš„æ–¹æ³•æ±‚å–å€åŸŸæ€§çµæ§‹çš„ç©©å®š
+*           æ–¹å‘ã€‚
+*        2ï¼‰å°æ–¼åœ¨DOGé‡‘å­—å¡”ä¸­æª¢æ¸¬å‡ºä¾†çš„é—œéµé»ï¼Œæ¡é›†å…¶æ‰€åœ¨é«˜æ–¯é‡‘å­—å¡”å½±è±¡3sigmaé„°åŸŸè¦–çª—å…§ç•«ç´ çš„æ¢¯åº¦å’Œæ–¹å‘æ¢¯åº¦å’Œæ–¹å‘ç‰¹å¾µã€‚
+*        3ï¼‰æ¢¯åº¦çš„æ¨¡å’Œæ–¹å‘å¦‚ä¸‹æ‰€ç¤º:
+*        4) åœ¨å®Œæˆé—œéµé»çš„æ¢¯åº¦è¨ˆç®—å¾Œï¼Œä½¿ç”¨ç›´æ–¹åœ–çµ±è¨ˆé„°åŸŸå…§ç•«ç´ çš„æ¢¯åº¦å’Œæ–¹å‘ã€‚æ¢¯åº¦ç›´æ–¹åœ–å°‡0~360åº¦çš„æ–¹å‘ç¯„åœåˆ†ç‚º36å€‹æŸ±ï¼Œå…¶ä¸­æ¯æŸ±10åº¦ï¼Œ
+*           å¦‚åœ–5.1æ‰€ç¤ºï¼Œç›´æ–¹åœ–çš„å³°å€¼æ–¹å‘ä»£è¡¨äº†é—œéµé»çš„ä¸»æ–¹å‘
 *********************************************************************************************************************************/
 
 #define ORI_SMOOTH_TIMES 2
-void OrientationAssignment(vector<FeaturePoint>& extrema, vector<FeaturePoint>& features, const vector<Mat>& gauss_pyr)
-{
-	int n = extrema.size();
-	double* hist;
-
-	for (int i = 0; i < n; i++)
+vector<FeaturePoint> orientation_assignment(vector<FeaturePoint>& extrema, const vector<Mat>& gaussian_pyramid) {
+	vector<FeaturePoint> result;
+	array<double, SIFT_N_BINS> hist;
+	for (int i = 0; i < extrema.size(); i++)
 	{
+		hist = get_orientation_histogram(gaussian_pyramid[extrema[i].octave * SIFT_LAYER_PER_OCT + extrema[i].interval],extrema[i].x, extrema[i].y, SIFT_N_BINS, cvRound(SIFT_ORI_RADIUS * extrema[i].octave_scale),SIFT_LAMBDA_ORI * extrema[i].octave_scale);
 
-		hist = CalculateOrientationHistogram(gauss_pyr[extrema[i].octave * (SIFT_N_SPO + 3) + extrema[i].interval],
-			extrema[i].x, extrema[i].y, SIFT_N_BINS, cvRound(SIFT_ORI_RADIUS * extrema[i].octave_scale),
-			SIFT_LAMBDA_ORI * extrema[i].octave_scale);                             //[1]­pºâ±è«×ªº¤è¦Vª½¤è¹Ï
-
-		for (int j = 0; j < ORI_SMOOTH_TIMES; j++)
-			GaussSmoothOriHist(hist, SIFT_N_BINS);                              //[2]¹ï¤è¦Vª½¤è¹Ï¶i¦æ°ª´µ¥­·Æ
-		double highest_peak = DominantDirection(hist, SIFT_N_BINS);            //[3]¨D¨ú¤è¦Vª½¤è¹Ï¤¤ªº®p­È
-																				  //[4]­pºâ§ó¥[ºë½TªºÃöÁäÂI¥D¤è¦V
-		CalcOriFeatures(extrema[i], features, hist, SIFT_N_BINS, highest_peak * SIFT_ORI_PEAK_RATIO);
-
-		delete[] hist;
+		for (int j = 0; j < ORI_SMOOTH_TIMES; j++) {
+			double prev = hist[SIFT_N_BINS - 1];
+			for (int i = 0; i < SIFT_N_BINS; i++)
+			{
+				double temp = hist[i];
+				hist[i] = 0.25 * prev + 0.5 * hist[i] + 0.25 * (i + 1 >= SIFT_N_BINS ? hist[0] : hist[i + 1]);
+				prev = temp;
+			}
+		}
+		double highest_peak = *max_element(hist.begin(), hist.end());
+		vector<FeaturePoint> tmp = CalcOriFeatures(extrema[i], hist, highest_peak * SIFT_ORI_PEAK_RATIO);
+		result.insert(result.end(),tmp.begin(), tmp.end());
 
 	}
+	return result;
 }
 
 void InterpHistEntry(double*** hist, double xbin, double ybin, double obin, double mag, int bins, int d)
@@ -677,18 +447,18 @@ void InterpHistEntry(double*** hist, double xbin, double ybin, double obin, doub
 	d_o = obin - o0;
 
 	/*
-		°µ´¡­È¡G
-		xbin,ybin,obin:ºØ¤lÂI©Ò¦b¤lµøµ¡ªº¦ì¸m©M¤è¦V
-		©Ò¦³ºØ¤lÂI³£±N¸¨¦b4*4ªºµøµ¡¤¤
-		r0,c0¨ú¤£¤j©óxbin¡Aybinªº¥¿¾ã¼Æ
-		r0,c0¥u¯à¨ú¨ì0,1,2
-		xbin,ybin¦b(-1, 2)
+		åšæ’å€¼ï¼š
+		xbin,ybin,obin:ç¨®å­é»æ‰€åœ¨å­è¦–çª—çš„ä½ç½®å’Œæ–¹å‘
+		æ‰€æœ‰ç¨®å­é»éƒ½å°‡è½åœ¨4*4çš„è¦–çª—ä¸­
+		r0,c0å–ä¸å¤§æ–¼xbinï¼Œybinçš„æ­£æ•´æ•¸
+		r0,c0åªèƒ½å–åˆ°0,1,2
+		xbin,ybinåœ¨(-1, 2)
 
-		r0¨ú¤£¤j©óxbinªº¥¿¾ã¼Æ®É¡C
+		r0å–ä¸å¤§æ–¼xbinçš„æ­£æ•´æ•¸æ™‚ã€‚
 		r0+0 <= xbin <= r0+1
-		mag¦b°Ï¶¡[r0,r1]¤W°µ´¡­È
+		magåœ¨å€é–“[r0,r1]ä¸Šåšæ’å€¼
 
-		obin¦P²z
+		obinåŒç†
 	*/
 
 	for (r = 0; r <= 1; r++)
@@ -720,9 +490,9 @@ void InterpHistEntry(double*** hist, double xbin, double ybin, double obin, doub
 }
 #define DESCR_SCALE_ADJUST 3
 /********************************************************************************************************************************
-*¼Ò²Õ»¡©ú:
-*        ¼Ò²Õ¤C--¨BÆJ1:­pºâ´y­z¤lªºª½¤è¹Ï
-*¥\¯à»¡©ú¡G
+*æ¨¡çµ„èªªæ˜:
+*        æ¨¡çµ„ä¸ƒ--æ­¥é©Ÿ1:è¨ˆç®—æè¿°å­çš„ç›´æ–¹åœ–
+*åŠŸèƒ½èªªæ˜ï¼š
 *
 *********************************************************************************************************************************/
 double*** CalculateDescrHist(const Mat& gauss, int x, int y, double octave_scale, double ori, int bins, int width)
@@ -747,7 +517,7 @@ double*** CalculateDescrHist(const Mat& gauss, int x, int y, double octave_scale
 	double cos_ori = cos(ori);
 	double sin_ori = sin(ori);
 
-	//6.1°ª´µÅv­È¡Asigmaµ¥©ó´y­z¦rµøµ¡¼e«×ªº¤@¥b
+	//6.1é«˜æ–¯æ¬Šå€¼ï¼Œsigmaç­‰æ–¼æè¿°å­—è¦–çª—å¯¬åº¦çš„ä¸€åŠ
 	double sigma = 0.5 * width;
 	double conste = -1.0 / (2 * sigma * sigma);
 
@@ -755,8 +525,8 @@ double*** CalculateDescrHist(const Mat& gauss, int x, int y, double octave_scale
 
 	double sub_hist_width = DESCR_SCALE_ADJUST * octave_scale;
 
-	//¡i1¡j­pºâ´y­z¤l©Ò»İªº¼v¶H»â°ì°Ï°ìªº¥b®|
-	int    radius = (sub_hist_width * sqrt(2.0) * (width + 1)) / 2.0 + 0.5;    //[1]0.5¨ú¥|±Ë¤­¤J
+	//ã€1ã€‘è¨ˆç®—æè¿°å­æ‰€éœ€çš„å½±è±¡é ˜åŸŸå€åŸŸçš„åŠå¾‘
+	int    radius = (sub_hist_width * sqrt(2.0) * (width + 1)) / 2.0 + 0.5;    //[1]0.5å–å››æ¨äº”å…¥
 	double grad_ori;
 	double grad_mag;
 
@@ -767,13 +537,21 @@ double*** CalculateDescrHist(const Mat& gauss, int x, int y, double octave_scale
 			double rot_x = (cos_ori * j - sin_ori * i) / sub_hist_width;
 			double rot_y = (sin_ori * j + cos_ori * i) / sub_hist_width;
 
-			double xbin = rot_x + width / 2 - 0.5;                         //[2]xbin,ybin¬°¸¨¦b4*4µøµ¡¤¤ªº¤U¼Ğ­È
+			double xbin = rot_x + width / 2 - 0.5;                         //[2]xbin,ybinç‚ºè½åœ¨4*4è¦–çª—ä¸­çš„ä¸‹æ¨™å€¼
 			double ybin = rot_y + width / 2 - 0.5;
+
+			int row = y + i;
+			int col = x + j;
 
 			if (xbin > -1.0 && xbin < width && ybin > -1.0 && ybin < width)
 			{
-				if (CalcGradMagOri(gauss, x + j, y + i, grad_mag, grad_ori)) //[3]­pºâÃöÁäÂIªº±è«×¤è¦V
+				if (row > 0 && row < gauss.rows - 1 && col > 0 && col < gauss.cols - 1)
 				{
+					double dx = gauss.at<double>(row, col + 1) - gauss.at<double>(row, col - 1);
+					double dy = gauss.at<double>(row + 1, col) - gauss.at<double>(row - 1, col);
+					double grad_mag = sqrt(dx * dx + dy * dy);
+					double grad_ori = atan2(dy, dx);
+
 					grad_ori = (CV_PI - grad_ori) - ori;
 					while (grad_ori < 0.0)
 						grad_ori += PI2;
@@ -809,9 +587,9 @@ void NormalizeDescr(FeaturePoint& feat)
 		feat.descriptor[i] *= len_inv;
 }
 /********************************************************************************************************************************
-*¼Ò²Õ»¡©ú:
-*        ¼Ò²Õ¤C--¨BÆJ2:ª½¤è¹Ï¨ì´y­z¤lªºÂà´«
-*¥\¯à»¡©ú¡G
+*æ¨¡çµ„èªªæ˜:
+*        æ¨¡çµ„ä¸ƒ--æ­¥é©Ÿ2:ç›´æ–¹åœ–åˆ°æè¿°å­çš„è½‰æ›
+*åŠŸèƒ½èªªæ˜ï¼š
 *
 *********************************************************************************************************************************/
 #define DESCR_MAG_THR 0.2f
@@ -827,53 +605,53 @@ void HistToDescriptor(double*** hist, int width, int bins, FeaturePoint& feature
 			}
 
 	feature.descr_length = k;
-	NormalizeDescr(feature);                           //[1]´y­z¤l¯S¼x¦V¶qÂk¤@¤Æ
+	NormalizeDescr(feature);                           //[1]æè¿°å­ç‰¹å¾µå‘é‡æ­¸ä¸€åŒ–
 
-	for (i = 0; i < k; i++)                           //[2]´y­z¤l¦V¶qªù­­
+	for (i = 0; i < k; i++)                           //[2]æè¿°å­å‘é‡é–€é™
 		if (feature.descriptor[i] > DESCR_MAG_THR)
 			feature.descriptor[i] = DESCR_MAG_THR;
 
-	NormalizeDescr(feature);                           //[3]´y­z¤l¶i¦æ³Ì«á¤@¦¸ªºÂk¤@¤Æ¾Ş§@
+	NormalizeDescr(feature);                           //[3]æè¿°å­é€²è¡Œæœ€å¾Œä¸€æ¬¡çš„æ­¸ä¸€åŒ–æ“ä½œ
 
-	for (i = 0; i < k; i++)                           //[4]±N³æºë«×¯BÂI«¬ªº´y­z¤lÂà´«¬°¾ã§Îªº´y­z¤l
+	for (i = 0; i < k; i++)                           //[4]å°‡å–®ç²¾åº¦æµ®é»å‹çš„æè¿°å­è½‰æ›ç‚ºæ•´å½¢çš„æè¿°å­
 	{
 		int_val = SIFT_INT_DESCR_FCTR * feature.descriptor[i];
 		feature.descriptor[i] = min(255, int_val);
 	}
 }
 /********************************************************************************************************************************
-*¼Ò²Õ»¡©ú:
-*        ¼Ò²Õ¤C:6 ÃöÁäÂI´y­z
-*¥\¯à»¡©ú¡G
-*        1¡^³q¹L¥H¤W¨BÆJ¡A¹ï©ó¤@­ÓÃöÁäÂI¡A¾Ö¦³¤T­Ó¸ê°T¡G¦ì¸m¡B¤Ø«×¡B¤è¦V
-*        2¡^±µ¤U¨Ó´N¬O¬°¨C­ÓÃöÁäÂI«Ø¥ß¤@­Ó´y­z²Å¡A¥Î¤@²Õ¦V¶q¨Ó±N³o­ÓÃöÁäÂI´y­z¥X¨Ó¡A¨Ï¨ä¤£ÀH¦UºØÅÜ¤Æ¦ÓÅÜ¤Æ¡A¤ñ¦p¥ú·Ó¡Bµø¨¤ÅÜ¤Æµ¥µ¥
-*        3¡^³o­Ó´y­z¤l¤£¦ı¥]¬AÃöÁäÂI¡A¤]¥]§tÃöÁäÂI©P³ò¹ï¨ä°^Ämªºµe¯ÀÂI¡A¨Ã¥B´y­z²ÅÀ³¸Ó¦³¸û°ªªº¿W¯S©Ê¡A¥H«K©ó¯S¼xÂI¥¿½Tªº¤Ç°t·§²v
-*        1¡^SIFT´y­z¤l----¬OÃöÁäÂI¾F°ì°ª´µ¼v¶H±è«×²Î­pµ²ªGªº¤@ºØªí¥Ü¡C
-*        2¡^³q¹L¹ïÃöÁäÂI©P³ò¼v¶H°Ï°ì¤À¶ô¡A­pºâ¶ô¤º±è«×ª½¤è¹Ï¡A¥Í¦¨¨ã¦³¿W¯S©Êªº¦V¶q
-*        3¡^³o­Ó¦V¶q¬O¸Ó°Ï°ì¼v¶H¸ê°Tªº¤@ºØªí­z©M©â¶H¡A¨ã¦³°ß¤@©Ê¡C
-*Lowe½×¤å¡G
-*    Lowe«ØÄ³´y­z¤l¨Ï¥Î¦bÃöÁäÂI¤Ø«×ªÅ¶¡¤º4*4ªºµøµ¡¤¤­pºâªº8­Ó¤è¦Vªº±è«×¸ê°T¡A¦@4*4*8=128ºû¦V¶q¨Óªí¼x¡C¨ãÅéªº¨BÆJ¦p¤U©Ò¥Ü:
-*        1)½T©w­pºâ´y­z¤l©Ò»İªº¼v¶H°Ï°ì
-*        2¡^±N®y¼Ğ¶b±ÛÂà¬°ÃöÁäÂIªº¤è¦V¡A¥H½T«O±ÛÂà¤£ÅÜ©Ê¡A¦pCSDN³Õ¤å¤¤ªº¹Ï6.2©Ò¥Ü¡F±ÛÂà«á¾F°ì¨ú¼ËÂIªº·s®y¼Ğ¥i¥H³q¹L¤½¦¡(6-2)­pºâ
-*        3¡^±N¾F°ì¤ºªº¨ú¼ËÂI¤À°t¨ì¹ïÀ³ªº¤l°Ï°ì¡A±N¤l°Ï°ì¤ºªº±è«×­È¤À°t¨ì8­Ó¤è¦V¤W¡A­pºâ¨äÅv­È
-*        4¡^´¡­È­pºâ¨C­ÓºØ¤lÂI¤K­Ó¤è¦Vªº±è«×
-*        5¡^¦p¤W²Î­pªº4*4*8=128­Ó±è«×¸ê°T§Y¬°¸ÓÃöÁäÂIªº¯S¼x¦V¶q¡C¯S¼x¦V¶q§Î¦¨«á¡A¬°¤F¥h°£¥ú·ÓÅÜ¤Æªº¼vÅT¡A»İ­n¹ï¥¦­Ì¶i¦æÂk¤@¤Æ³B²z¡A
-*           ¹ï©ó¼v¶H¦Ç«×­È¾ãÅéº}²¾¡A¼v¶H¦UÂIªº±è«×¬O¾F°ìµe¯À¬Û´î±o¨ìªº¡A©Ò¥H¤]¯à¥h°£¡C±o¨ìªº´y­z¤l¦V¶q¬°H¡AÂk¤@¤Æ¤§«áªº¦V¶q¬°L
-*        6¡^´y­z¤l¦V¶qªù­­¡C«D½u©Ê¥ú·Ó¡A¬Û¾÷¹¡©M«×ÅÜ¤Æ¹ï³y¦¨¬Y¨Ç¤è¦Vªº±è«×­È¹L¤j¡A¦Ó¹ï¤è¦Vªº¼vÅT·L®z¡C¦]¦¹¡A³]©wªù­­­È¡]¦V¶qÂk¤@¤Æ
-*           «á¡A¤@¯ë¨ú0.2¡^ºIÂ_¸û¤jªº±è«×­È¡CµM«á¡A¦b¶i¦æ¤@¦¸Âk¤@¤Æ³B²z¡A´£°ª¯S¼xªºÅ²§O©Ê¡C
-*        7¡^«ö¯S¼xÂIªº¤Ø«×¹ï¯S¼x´y­z¦V¶q¶i¦æ±Æ§Ç
-*        8¡^¦Ü¦¹¡ASIFT¯S¼x´y­z¦V¶q¥Í¦¨¡C
+*æ¨¡çµ„èªªæ˜:
+*        æ¨¡çµ„ä¸ƒ:6 é—œéµé»æè¿°
+*åŠŸèƒ½èªªæ˜ï¼š
+*        1ï¼‰é€šéä»¥ä¸Šæ­¥é©Ÿï¼Œå°æ–¼ä¸€å€‹é—œéµé»ï¼Œæ“æœ‰ä¸‰å€‹è³‡è¨Šï¼šä½ç½®ã€å°ºåº¦ã€æ–¹å‘
+*        2ï¼‰æ¥ä¸‹ä¾†å°±æ˜¯ç‚ºæ¯å€‹é—œéµé»å»ºç«‹ä¸€å€‹æè¿°ç¬¦ï¼Œç”¨ä¸€çµ„å‘é‡ä¾†å°‡é€™å€‹é—œéµé»æè¿°å‡ºä¾†ï¼Œä½¿å…¶ä¸éš¨å„ç¨®è®ŠåŒ–è€Œè®ŠåŒ–ï¼Œæ¯”å¦‚å…‰ç…§ã€è¦–è§’è®ŠåŒ–ç­‰ç­‰
+*        3ï¼‰é€™å€‹æè¿°å­ä¸ä½†åŒ…æ‹¬é—œéµé»ï¼Œä¹ŸåŒ…å«é—œéµé»å‘¨åœå°å…¶è²¢ç»çš„ç•«ç´ é»ï¼Œä¸¦ä¸”æè¿°ç¬¦æ‡‰è©²æœ‰è¼ƒé«˜çš„ç¨ç‰¹æ€§ï¼Œä»¥ä¾¿æ–¼ç‰¹å¾µé»æ­£ç¢ºçš„åŒ¹é…æ¦‚ç‡
+*        1ï¼‰SIFTæè¿°å­----æ˜¯é—œéµé»é„°åŸŸé«˜æ–¯å½±è±¡æ¢¯åº¦çµ±è¨ˆçµæœçš„ä¸€ç¨®è¡¨ç¤ºã€‚
+*        2ï¼‰é€šéå°é—œéµé»å‘¨åœå½±è±¡å€åŸŸåˆ†å¡Šï¼Œè¨ˆç®—å¡Šå…§æ¢¯åº¦ç›´æ–¹åœ–ï¼Œç”Ÿæˆå…·æœ‰ç¨ç‰¹æ€§çš„å‘é‡
+*        3ï¼‰é€™å€‹å‘é‡æ˜¯è©²å€åŸŸå½±è±¡è³‡è¨Šçš„ä¸€ç¨®è¡¨è¿°å’ŒæŠ½è±¡ï¼Œå…·æœ‰å”¯ä¸€æ€§ã€‚
+*Loweè«–æ–‡ï¼š
+*    Loweå»ºè­°æè¿°å­ä½¿ç”¨åœ¨é—œéµé»å°ºåº¦ç©ºé–“å…§4*4çš„è¦–çª—ä¸­è¨ˆç®—çš„8å€‹æ–¹å‘çš„æ¢¯åº¦è³‡è¨Šï¼Œå…±4*4*8=128ç¶­å‘é‡ä¾†è¡¨å¾µã€‚å…·é«”çš„æ­¥é©Ÿå¦‚ä¸‹æ‰€ç¤º:
+*        1)ç¢ºå®šè¨ˆç®—æè¿°å­æ‰€éœ€çš„å½±è±¡å€åŸŸ
+*        2ï¼‰å°‡åº§æ¨™è»¸æ—‹è½‰ç‚ºé—œéµé»çš„æ–¹å‘ï¼Œä»¥ç¢ºä¿æ—‹è½‰ä¸è®Šæ€§ï¼Œå¦‚CSDNåšæ–‡ä¸­çš„åœ–6.2æ‰€ç¤ºï¼›æ—‹è½‰å¾Œé„°åŸŸå–æ¨£é»çš„æ–°åº§æ¨™å¯ä»¥é€šéå…¬å¼(6-2)è¨ˆç®—
+*        3ï¼‰å°‡é„°åŸŸå…§çš„å–æ¨£é»åˆ†é…åˆ°å°æ‡‰çš„å­å€åŸŸï¼Œå°‡å­å€åŸŸå…§çš„æ¢¯åº¦å€¼åˆ†é…åˆ°8å€‹æ–¹å‘ä¸Šï¼Œè¨ˆç®—å…¶æ¬Šå€¼
+*        4ï¼‰æ’å€¼è¨ˆç®—æ¯å€‹ç¨®å­é»å…«å€‹æ–¹å‘çš„æ¢¯åº¦
+*        5ï¼‰å¦‚ä¸Šçµ±è¨ˆçš„4*4*8=128å€‹æ¢¯åº¦è³‡è¨Šå³ç‚ºè©²é—œéµé»çš„ç‰¹å¾µå‘é‡ã€‚ç‰¹å¾µå‘é‡å½¢æˆå¾Œï¼Œç‚ºäº†å»é™¤å…‰ç…§è®ŠåŒ–çš„å½±éŸ¿ï¼Œéœ€è¦å°å®ƒå€‘é€²è¡Œæ­¸ä¸€åŒ–è™•ç†ï¼Œ
+*           å°æ–¼å½±è±¡ç°åº¦å€¼æ•´é«”æ¼‚ç§»ï¼Œå½±è±¡å„é»çš„æ¢¯åº¦æ˜¯é„°åŸŸç•«ç´ ç›¸æ¸›å¾—åˆ°çš„ï¼Œæ‰€ä»¥ä¹Ÿèƒ½å»é™¤ã€‚å¾—åˆ°çš„æè¿°å­å‘é‡ç‚ºHï¼Œæ­¸ä¸€åŒ–ä¹‹å¾Œçš„å‘é‡ç‚ºL
+*        6ï¼‰æè¿°å­å‘é‡é–€é™ã€‚éç·šæ€§å…‰ç…§ï¼Œç›¸æ©Ÿé£½å’Œåº¦è®ŠåŒ–å°é€ æˆæŸäº›æ–¹å‘çš„æ¢¯åº¦å€¼éå¤§ï¼Œè€Œå°æ–¹å‘çš„å½±éŸ¿å¾®å¼±ã€‚å› æ­¤ï¼Œè¨­å®šé–€é™å€¼ï¼ˆå‘é‡æ­¸ä¸€åŒ–
+*           å¾Œï¼Œä¸€èˆ¬å–0.2ï¼‰æˆªæ–·è¼ƒå¤§çš„æ¢¯åº¦å€¼ã€‚ç„¶å¾Œï¼Œåœ¨é€²è¡Œä¸€æ¬¡æ­¸ä¸€åŒ–è™•ç†ï¼Œæé«˜ç‰¹å¾µçš„é‘‘åˆ¥æ€§ã€‚
+*        7ï¼‰æŒ‰ç‰¹å¾µé»çš„å°ºåº¦å°ç‰¹å¾µæè¿°å‘é‡é€²è¡Œæ’åº
+*        8ï¼‰è‡³æ­¤ï¼ŒSIFTç‰¹å¾µæè¿°å‘é‡ç”Ÿæˆã€‚
 *********************************************************************************************************************************/
 void DescriptorRepresentation(vector<FeaturePoint>& features, const vector<Mat>& gauss_pyr, int bins, int width)
 {
 	double*** hist;
 
 	for (int i = 0; i < features.size(); i++)
-	{                                                                       //[1]­pºâ´y­z¤lªºª½¤è¹Ï
+	{                                                                       //[1]è¨ˆç®—æè¿°å­çš„ç›´æ–¹åœ–
 		hist = CalculateDescrHist(gauss_pyr[features[i].octave * (SIFT_N_SPO + 3) + features[i].interval],
 			features[i].x, features[i].y, features[i].octave_scale, features[i].ori, bins, width);
 
-		HistToDescriptor(hist, width, bins, features[i]);                   //[2]ª½¤è¹Ï¨ì´y­z¤lªºÂà´«
+		HistToDescriptor(hist, width, bins, features[i]);                   //[2]ç›´æ–¹åœ–åˆ°æè¿°å­çš„è½‰æ›
 
 		for (int j = 0; j < width; j++)
 		{
@@ -916,8 +694,8 @@ Mat draw_keypoints(const Mat& target, vector<FeaturePoint>& fps, int size) {
 }
 
 /*******************************************************************************************************************
-*¨ç¦¡»¡©ú:
-*        µe¥XSIFT¯S¼xÂIªº¨ãÅé¨ç¦¡
+*å‡½å¼èªªæ˜:
+*        ç•«å‡ºSIFTç‰¹å¾µé»çš„å…·é«”å‡½å¼
 ********************************************************************************************************************/
 void DrawSiftFeature(Mat& src, FeaturePoint& feat, cv::Scalar color)
 {
@@ -951,8 +729,8 @@ void DrawSiftFeature(Mat& src, FeaturePoint& feat, cv::Scalar color)
 	line(src, end, h2, color, 1, 8, 0);
 }
 /*******************************************************************************************************************
-*¨ç¦¡»¡©ú:
-*         ³Ì¤jªº¼Ò²Õ3¡Gµe¥XSIFT¯S¼xÂI
+*å‡½å¼èªªæ˜:
+*         æœ€å¤§çš„æ¨¡çµ„3ï¼šç•«å‡ºSIFTç‰¹å¾µé»
 ********************************************************************************************************************/
 void DrawSiftFeatures(Mat& src, vector<FeaturePoint>& features)
 {
@@ -975,10 +753,10 @@ vector<FeaturePoint> SIFT(Mat img) {
 
 	cout << "local extrema.size: " << extrema.size() << endl;
 
-	CalculateScale(extrema, SIFT_SIGMA, SIFT_N_SPO);
-	HalfFeatures(extrema);
+	calculate_scale_half_features(extrema);
+	//half_features(extrema);
 
-	OrientationAssignment(extrema, result, gaussian_pyramid);
+	result = orientation_assignment(extrema, gaussian_pyramid);
 
 	DescriptorRepresentation(result, gaussian_pyramid, 8, 4);
 	sort(result.begin(), result.end(), FeatureCmp);
@@ -1030,6 +808,69 @@ vector<FeaturePoint> SIFT(Mat img) {
 	//imshow("result",draw_keypoints(img,result,3));
 	//return result;
 }
+
+
+
+
+void featureMatch(vector< vector<FeaturePoint> >& img_fps_list) {
+	int image_num = img_fps_list.size();
+	ANNpointArray* descriptors = new ANNpointArray[image_num];
+	ANNkd_tree** kdTree = new ANNkd_tree * [image_num];
+	for (int i = 0; i < image_num; i++) {
+		int feature_num = img_fps_list[i].size();
+		//cout << feature_num << endl;
+		descriptors[i] = annAllocPts(feature_num, 128);
+		for (int x = 0; x < feature_num; x++) {
+			for (int y = 0; y < 128; y++) {
+				//cout << "x = " << x << " , y = " << y;
+				//cout << " , " << (*feature_list)[i][x].x << endl;
+				//cout << " , " << (*feature_list)[i][x].descriptorList[y]<< endl;
+				descriptors[i][x][y] = img_fps_list[i][x].descriptor[y];
+			}
+		}
+		kdTree[i] = new ANNkd_tree(descriptors[i], feature_num, 128);
+	}
+	ANNpoint fd = annAllocPt(128);
+	ANNidxArray nnIdx = new ANNidx[2];
+	ANNdistArray dists = new ANNdist[2];
+	for (int i = 0; i < image_num; i++) {
+		int feature_num = img_fps_list[i].size();
+		for (int x = 0; x < feature_num; x++) {
+			img_fps_list[i][x].best_match.assign(image_num, -1);
+			for (int y = 0; y < 128; y++)
+				fd[y] = img_fps_list[i][x].descriptor[y];
+
+			for (int j = 0; j < image_num; j++) {
+				if (i == j) //same image
+					continue;
+				kdTree[j]->annkSearch(fd, 2, nnIdx, dists, 0);
+				if (dists[0] < 0.5 * dists[1])
+					img_fps_list[i][x].best_match[j] = nnIdx[0];
+			}
+		}
+	}
+	//double check
+	for (int i = 0; i < image_num; i++) {
+		int feature_num = img_fps_list[i].size();
+		for (int x = 0; x < feature_num; x++) {
+			for (int j = 0; j < image_num; j++) {
+				if (i == j)
+					continue;
+				if (img_fps_list[i][x].best_match[j] == -1)
+					continue;
+				if (img_fps_list[j][img_fps_list[i][x].best_match[j]].best_match[i] != x)
+					img_fps_list[i][x].best_match[j] = -1;
+			}
+		}
+	}
+	delete[] descriptors;
+	delete[] kdTree;
+	delete[] dists;
+	delete[] nnIdx;
+	annDeallocPt(fd);
+	annClose();
+}
+
 
 
 
@@ -1164,10 +1005,10 @@ vector<Mat> get_gaussian_pyramid(Mat img) {
 	}
 
 
-	//vector<Mat> result(SIFT_N_OCTAVE * SIFT_INTVLS); //­pºâ°ª´µª÷¦r¶ğÁ`layer¼Æ(´X­Óoctave * ¨C­Óoctave´X­Ólayer)
+	//vector<Mat> result(SIFT_N_OCTAVE * SIFT_INTVLS); //è¨ˆç®—é«˜æ–¯é‡‘å­—å¡”ç¸½layeræ•¸(å¹¾å€‹octave * æ¯å€‹octaveå¹¾å€‹layer)
 	//vector<double> sigmas(SIFT_INTVLS);
 	//int result_index = 0;
-	//double k = pow(2.0f, 1.0f / (double)(SIFT_INTVLS - 3));//-3¤£©ú¡A¦ü¥G¬O°t¦X¤U­±ªºsigma­pºâ
+	//double k = pow(2.0f, 1.0f / (double)(SIFT_INTVLS - 3));//-3ä¸æ˜ï¼Œä¼¼ä¹æ˜¯é…åˆä¸‹é¢çš„sigmaè¨ˆç®—
 	//int img_row = img.rows * 2;
 	//int img_col = img.cols * 2;
 	//
@@ -1175,24 +1016,24 @@ vector<Mat> get_gaussian_pyramid(Mat img) {
 	//	double total_sigma = SIFT_SIGMA_MIN;
 	//	double pre_total_sigma = total_sigma;
 	//	Mat octave_base;
-	//	if (i != 0) {//¨C¼hoctaveªº²Ä¤@±i¹Ï¤£¥ÎGaussianBlur¡A¦]¬°ÁY¤p´N¨ã¦³¼Ò½kªº®ÄªG
+	//	if (i != 0) {//æ¯å±¤octaveçš„ç¬¬ä¸€å¼µåœ–ä¸ç”¨GaussianBlurï¼Œå› ç‚ºç¸®å°å°±å…·æœ‰æ¨¡ç³Šçš„æ•ˆæœ
 	//		img_row /= 2.0f;
 	//		img_col /= 2.0f;
 	//		resize(img, octave_base, Size(img_col, img_row), 0.0f, 0.0f, INTER_LINEAR);
 	//		result[result_index] = octave_base;
 	//		result_index++;
 	//	}
-	//	else { //first image ²Ä¤@¼hoctaveªº²Ä¤@±i¹Ï
+	//	else { //first image ç¬¬ä¸€å±¤octaveçš„ç¬¬ä¸€å¼µåœ–
 	//		resize(img, octave_base, Size(img_col, img_row), 0.0f, 0.0f, INTER_LINEAR);
-	//		double sigma_diff = sqrt((total_sigma * total_sigma) / (0.25f) - 1.0f);//¤£©ú
+	//		double sigma_diff = sqrt((total_sigma * total_sigma) / (0.25f) - 1.0f);//ä¸æ˜
 	//		GaussianBlur(octave_base, octave_base, Size(3, 3), sigma_diff, sigma_diff);
 	//		result[result_index] = octave_base;
 	//		result_index++;
 	//	}
 
-	//	for (int j = 1; j < SIFT_INTVLS; j++) { //¨C¼hoctave²Ä¤@±i«áªº¹Ï
+	//	for (int j = 1; j < SIFT_INTVLS; j++) { //æ¯å±¤octaveç¬¬ä¸€å¼µå¾Œçš„åœ–
 	//		total_sigma *= k;
-	//		double sigma_diff = sqrt(total_sigma * total_sigma - pre_total_sigma * pre_total_sigma);//¤£©ú
+	//		double sigma_diff = sqrt(total_sigma * total_sigma - pre_total_sigma * pre_total_sigma);//ä¸æ˜
 	//		//cout << sigma_diff << endl;
 	//		GaussianBlur(octave_base, result[result_index],Size(3,3), sigma_diff, sigma_diff);
 	//		result_index++;
@@ -1236,7 +1077,7 @@ vector<Mat> get_gaussian_pyramid(Mat img) {
 }
 
 vector<Mat> difference_of_gaussian_pyramid(const vector<Mat>& gaussian_pyramid) {
-	vector<Mat> result(SIFT_N_OCTAVE * (SIFT_INTVLS - 1));//­pºâDOGª÷¦r¶ğÁ`layer¼Æ(´X­Óoctave * (¨â­Ó°ª´µ¹Ï¬Û´î¡A¦]¦¹·|¤Ö¤@­Ó))	
+	vector<Mat> result(SIFT_N_OCTAVE * (SIFT_INTVLS - 1));//è¨ˆç®—DOGé‡‘å­—å¡”ç¸½layeræ•¸(å¹¾å€‹octave * (å…©å€‹é«˜æ–¯åœ–ç›¸æ¸›ï¼Œå› æ­¤æœƒå°‘ä¸€å€‹))	
 	int result_index = 0;
 	for (int i = 0; i < SIFT_N_OCTAVE; i++) {
 		for (int j = 1; j < SIFT_INTVLS; j++) {
@@ -1255,15 +1096,15 @@ vector<FeaturePoint> find_feature_points(vector<Mat> dogs) {
 	float threshold = 0.5f * SIFT_CONTR_THR / 3.0f;
 	cout << "threshold " << threshold << endl;
 	for (int i = 0; i < SIFT_N_OCTAVE; i++) {		
-		for (int j = 1; j < (SIFT_INTVLS - 1) - 1; j++) {//·|»İ­n«e«á¨â­Ólayerªº¸ê°T¡A¦]¦¹²Ä¤@­Ó¸ò³Ì«á¤@­Ólayer¤£¶]
+		for (int j = 1; j < (SIFT_INTVLS - 1) - 1; j++) {//æœƒéœ€è¦å‰å¾Œå…©å€‹layerçš„è³‡è¨Šï¼Œå› æ­¤ç¬¬ä¸€å€‹è·Ÿæœ€å¾Œä¸€å€‹layerä¸è·‘
 			Mat& prev = dogs[i * (SIFT_INTVLS - 1) + j - 1];
 			Mat& current = dogs[i * (SIFT_INTVLS - 1) + j];
 			Mat& next = dogs[i * (SIFT_INTVLS - 1) + j + 1];
 			int img_row = current.rows;
 			int img_col = current.cols;
-			//¦]¬°­n3*3°Ï°ì¡A¦]¦¹²Ä¤@­Ó»P³Ì«á¤@­Ó¹³¯À¤£°µ
+			//å› ç‚ºè¦3*3å€åŸŸï¼Œå› æ­¤ç¬¬ä¸€å€‹èˆ‡æœ€å¾Œä¸€å€‹åƒç´ ä¸åš
 			for (int row = 1; row < img_row - 1; row++) {
-				//¦]¬°­n3*3°Ï°ì¡A¦]¦¹²Ä¤@­Ó»P³Ì«á¤@­Ó¹³¯À¤£°µ
+				//å› ç‚ºè¦3*3å€åŸŸï¼Œå› æ­¤ç¬¬ä¸€å€‹èˆ‡æœ€å¾Œä¸€å€‹åƒç´ ä¸åš
 				for (int col = 1; col < img_col - 1; col++) {
 					//cout << current.at<float>(row, col) << endl;
 					if (fabs(current.at<float>(row, col)) < 0.8 * SIFT_C_DOG) {
@@ -1274,7 +1115,7 @@ vector<FeaturePoint> find_feature_points(vector<Mat> dogs) {
 					//if (is_extremum(prev, current, next, row, col)) {
 					if (isExtremum(col,row, dogs, i * (SIFT_INTVLS - 1) + j)) {
 						
-						//²£¥ÍFeaturePoint¡A¨ÃÀË´ú¬O§_valid
+						//ç”¢ç”ŸFeaturePointï¼Œä¸¦æª¢æ¸¬æ˜¯å¦valid
 						FeaturePoint fp = generate_feature_point(dogs, row, col, i, j);
 						if (fp.valid) {
 							result.push_back(fp);
@@ -1288,7 +1129,7 @@ vector<FeaturePoint> find_feature_points(vector<Mat> dogs) {
 	return result;
 }
 
-//ÀË¬d¸ÓÂI¦b¤T¼h3*3ªº¹³¯À¤¤¡A¬O§_¬°³Ì¤j©Î³Ì¤p­È(·¥ºİ)
+//æª¢æŸ¥è©²é»åœ¨ä¸‰å±¤3*3çš„åƒç´ ä¸­ï¼Œæ˜¯å¦ç‚ºæœ€å¤§æˆ–æœ€å°å€¼(æ¥µç«¯)
 bool is_extremum(const Mat& prev, const Mat& current, const Mat& next, int row, int col) {
 	vector<int> all_vals;
 	int check_val = current.at<float>(row, col);
@@ -1337,7 +1178,7 @@ bool isExtremum(int x, int y, const vector<Mat>& dog_pyr, int index)
 			{
 				for (int k = -1; k <= 1; k++)
 				{
-					//ÀË¬d³Ì¤p·¥­È
+					//æª¢æŸ¥æœ€å°æ¥µå€¼
 					if (val > *((float*)dog_pyr[index + i].data + stp * (y + j) + (x + k)))
 					{
 						return false;
@@ -1375,7 +1216,7 @@ FeaturePoint generate_feature_point(const vector<Mat>& dogs, int row, int col, i
 
 
 
-/// «İ­×§ï//////////////////////////////////////////////
+/// å¾…ä¿®æ”¹//////////////////////////////////////////////
 tuple<float, float, float> update_feature_point(FeaturePoint& fp, const vector<Mat>& dogs) {
 	float g1, g2, g3;
 	float h11, h12, h13, h22, h23, h33;
@@ -1427,7 +1268,7 @@ tuple<float, float, float> update_feature_point(FeaturePoint& fp, const vector<M
 }
 
 
-/// «İ­×§ï//////////////////////////////////////////////
+/// å¾…ä¿®æ”¹//////////////////////////////////////////////
 bool on_edge(FeaturePoint fp, const vector<Mat>& dogs) {
 	const Mat& img = dogs[fp.layer_index];
 	float h11, h12, h22;

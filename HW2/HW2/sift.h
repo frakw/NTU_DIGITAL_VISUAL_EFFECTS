@@ -8,7 +8,7 @@
 #include <tuple>
 #include <utility>
 #include <algorithm>
-
+#include <ANN/ANN.h>
 #include "sift_define.h"
 #include "feature_point.h"
 #include "match_info.h"
@@ -23,6 +23,8 @@ std::vector<std::pair<int, int>> find_keypoint_matches(std::vector<FeaturePoint>
 	float thresh_absolute = 350.0f);
 
 Mat draw_matches(const Mat& a, const Mat& b, std::vector<FeaturePoint>& kps_a,
-	std::vector<FeaturePoint>& kps_b, std::vector<std::pair<int, int>> matches);
+	std::vector<FeaturePoint>& kps_b);
+
+void featureMatch(vector< vector<FeaturePoint> >& img_fps_list);
 
 #endif

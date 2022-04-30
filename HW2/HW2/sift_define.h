@@ -41,7 +41,7 @@
 #define SIFT_N_ORI 8
 
 // default threshold on keypoint contrast |D(x)|
-#define SIFT_CONTR_THR 0.04f
+#define SIFT_CONTR_THR 0.03f
 
 // default threshold on keypoint ratio of principle curvatures
 #define SIFT_CURV_THR 10.f

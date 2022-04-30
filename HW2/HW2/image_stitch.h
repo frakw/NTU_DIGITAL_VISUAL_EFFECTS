@@ -3,6 +3,8 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <opencv2/opencv.hpp>
+#include "sift.h"
 using namespace std;
 using namespace cv;
 

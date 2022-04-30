@@ -50,6 +50,35 @@ public:
 	int    descr_length;
 	double descriptor[FEATURE_ELEMENT_LENGTH];            //¡i3¡j¯S¼xÂI´y­z²Å            
 	double val;
+	FeaturePoint() {}
+	FeaturePoint(int _x,int _y,int _offset_x,int _offset_y,int _interval,int _offset_interval,int _octave)
+		: x(_x),y(_y),offset_x(_offset_x),offset_y(_offset_y),interval(_interval),offset_interval(_offset_interval),octave(_octave)
+	{
+		dx = (x + offset_x) * pow(2.0, octave);
+		dy = (y + offset_y) * pow(2.0, octave);
+	}
+
+	vector<int> best_match;
+
+	FeaturePoint& operator=(const FeaturePoint& src) {
+		this->dx = src.dx;
+		this->dy = src.dy;
+
+		this->interval = src.interval;
+		this->octave = src.octave;
+		this->octave_scale = src.octave_scale;
+		this->offset_interval = src.offset_interval;
+
+		this->offset_x = src.offset_x;
+		this->offset_y = src.offset_y;
+
+		this->ori = src.ori;
+		this->scale = src.scale;
+		this->val = src.val;
+		this->x = src.x;
+		this->y = src.y;
+		return *this;
+	}
 };
 
 #endif
