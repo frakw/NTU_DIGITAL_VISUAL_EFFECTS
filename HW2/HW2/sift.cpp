@@ -761,7 +761,7 @@ vector<FeaturePoint> SIFT(Mat img) {
 	DescriptorRepresentation(result, gaussian_pyramid, 8, 4);
 	sort(result.begin(), result.end(), FeatureCmp);
 	cout << "result.size: " << result.size() << endl;
-	imshow("result", draw_keypoints(img, result, 3));
+	//imshow("result", draw_keypoints(img, result, 3));
 	//DrawSiftFeatures(img, result);
 	//imshow("result", img);
 	return result;

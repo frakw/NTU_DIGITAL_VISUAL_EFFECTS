@@ -11,4 +11,6 @@ using namespace cv;
 
 //Mat cylindrical_warping(const Mat& input, double focal_length);
 Mat cylindrical_warping(const Mat& input, vector<FeaturePoint>& feat, double f);
+Mat cylindrical_warping2(const Mat& input, vector<FeaturePoint>& feat);
+
 #endif

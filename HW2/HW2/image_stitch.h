@@ -5,6 +5,8 @@
 #include <string>
 #include <opencv2/opencv.hpp>
 #include "sift.h"
+#include "warping.h"
+#include "combine.h"
 using namespace std;
 using namespace cv;
 
