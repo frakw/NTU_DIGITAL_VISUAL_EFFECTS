@@ -11,16 +11,30 @@ int main()
 {
 
 
+	//vector<string> filenames =
+	//{ 
+	//	"./test_image/parrington/prtn01.jpg" ,
+	//	"./test_image/parrington/prtn02.jpg" ,
+	//	"./test_image/parrington/prtn00.jpg" ,
+	//	"./test_image/parrington/prtn17.jpg" ,
+	//	"./test_image/parrington/prtn04.jpg" ,
+	//	"./test_image/parrington/prtn16.jpg" ,
+	//	"./test_image/parrington/prtn03.jpg" ,
+	//};
+	// 
+	// 
+	
 	vector<string> filenames =
-	{ 
-		"./parrington/prtn03.jpg" ,
-		"./parrington/prtn01.jpg" ,
-		"./parrington/prtn04.jpg" ,
-		"./parrington/prtn06.jpg" ,
-		"./parrington/prtn05.jpg" ,
-		"./parrington/prtn00.jpg" ,
-		"./parrington/prtn02.jpg" ,
+	{
+		"./test_image/grail/grail00.jpg" ,
+		"./test_image/grail/grail01.jpg" ,
+		"./test_image/grail/grail02.jpg" ,
+		"./test_image/grail/grail03.jpg" ,
+		"./test_image/grail/grail04.jpg" ,
+		"./test_image/grail/grail16.jpg" ,
+		"./test_image/grail/grail17.jpg" ,
 	};
+
 	//Mat img1 = imread("./Lenna.jpg");
 	//Mat img2 = imread("./Lenna_rotate_scale.png");
 	//Mat img = imread("./Lenna_rotate_scale.png");

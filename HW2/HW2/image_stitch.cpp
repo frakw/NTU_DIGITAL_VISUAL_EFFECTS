@@ -26,14 +26,24 @@ Mat image_stitch(vector<string> filenames) {
 	//圖片由左而右
 	//cout << "get_left_img_index" << get_right_img_index(imgs[0], img_fps_list[0],img_count);
 	vector<int> img_order = get_image_order(warp_imgs, img_fps_list);
+
+
+
 	cout << "img_order" << endl;
+	for (int i : img_order) cout << i << " ";
 	int x = 0;
-	for (int i : img_order) {
-		cout << i << ' ';
-		imshow(to_string(x++), imgs[i]);
+
+	cout << "img_move" << endl;
+
+	vector<pair<int, int>> img_moves(img_count);
+	for (int i = 1; i < warp_imgs.size(); i++) {
+		img_moves[i] = get_two_img_move(warp_imgs, img_fps_list, img_order[i], img_order[i - 1]);
+		cout << img_moves[i].first << " " << img_moves[i].second << endl;
 	}
 	cout << endl;
-	//Mat match_result = draw_matches2(imgs[0], imgs[1], img_fps_list[0], img_fps_list[1]);
+
+	generateNewImage(warp_imgs, img_order,img_moves);
+	//Mat match_result = draw_matches2(warp_imgs[0], warp_imgs[1], img_fps_list[0], img_fps_list[1]);
 	//imshow("match", match_result);
 	//imshow("feature point", draw_keypoints(imgs[1], img_fps_list[1],3));
 	return result;
