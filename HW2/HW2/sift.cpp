@@ -283,7 +283,6 @@ vector<FeaturePoint> detect_local_extrema(const vector<Mat>& dogs, int octaves)
 {
 	vector<FeaturePoint> result;
 	double  thresh = 0.5 * DXTHRESHOLD / SIFT_INTERVALS;
-	int count = 0;
 	for (int octave = 0; octave < octaves; octave++)
 	{
 		for (int layer = 1; layer < SIFT_DOG_LAYER_PER_OCT - 1; layer++)
@@ -313,15 +312,11 @@ vector<FeaturePoint> detect_local_extrema(const vector<Mat>& dogs, int octaves)
 							}
 						}
 					}
-					else {
-						count++;
-					}
 				}
 			}
 
 		}
 	}
-	cout << "count: " << count << endl;
 	return result;
 }
 void calculate_scale_half_features(vector<FeaturePoint>& features)
@@ -744,69 +739,15 @@ void DrawSiftFeatures(Mat& src, vector<FeaturePoint>& features)
 vector<FeaturePoint> SIFT(Mat img) {
 	vector<FeaturePoint> result;
 	int octaves = log((double)min(img.rows, img.cols)) / log(2.0) - 2;
-	cout << "octaves: " << octaves << endl;
 	vector<Mat> gaussian_pyramid = get_gaussian_pyramid(img, octaves);
-	cout << "gaussian_pyramid.octave.size: " << gaussian_pyramid.size() << endl;
 	vector<Mat> dogs = get_dog_pyramid(gaussian_pyramid, octaves);
-
 	vector<FeaturePoint> extrema = detect_local_extrema(dogs, octaves);
-
-	cout << "local extrema.size: " << extrema.size() << endl;
-
 	calculate_scale_half_features(extrema);
-	//half_features(extrema);
-
 	result = orientation_assignment(extrema, gaussian_pyramid);
-
 	DescriptorRepresentation(result, gaussian_pyramid, 8, 4);
 	sort(result.begin(), result.end(), FeatureCmp);
-	cout << "result.size: " << result.size() << endl;
-	//imshow("result", draw_keypoints(img, result, 3));
-	//DrawSiftFeatures(img, result);
-	//imshow("result", img);
+	cout << "feature point count:  " << result.size() << endl;
 	return result;
-
-	//vector<Mat> gaussian_pyramid = get_gaussian_pyramid(img);
-	//cout << "gaussian_pyramid.octave.size: " << gaussian_pyramid.size() << endl;
-
-	//vector<Mat> dogs = difference_of_gaussian_pyramid(gaussian_pyramid);
-
-	//cout << "dogs.octave.size: " << dogs.size() << endl;
-
-
-
-	//for (int i = 0; i < dogs.size(); i++) {
-	//	
-	//	Mat tmp;
-	//	dogs[i].convertTo(tmp,CV_8UC1,255);
-	//	imwrite(to_string(i) + ".jpg", tmp);
-	//}
-	
-	//for (int i = 0; i < gaussian_pyramid.size(); i++) {
-	//	imshow(to_string(i), gaussian_pyramid[i]);
-	//}
-	//for (int i = 0; i < dogs.size(); i++) {
-	//	imshow(to_string(i), dogs[i]);
-	//}
-
-	//return result;
-
-	//vector<FeaturePoint> feature_points = find_feature_points(dog_pyr);
-
-	//cout << "feature_points.size: " << feature_points.size() << endl;
-
-
-	//vector<Mat> gradient_pyramid = generate_gradient_pyramid(gauss_pyr);
-
-	//for (int i = 0; i < feature_points.size(); i++) {
-	//	vector<float> orientations = get_orientations(feature_points[i], gradient_pyramid);
-	//	for (int j = 0; j < orientations.size(); j++) {
-	//		
-	//		result.push_back(compute_keypoint_descriptor(feature_points[i], orientations[j], gradient_pyramid));
-	//	}
-	//}
-	//imshow("result",draw_keypoints(img,result,3));
-	//return result;
 }
 
 

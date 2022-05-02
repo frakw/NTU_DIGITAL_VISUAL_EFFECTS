@@ -121,7 +121,7 @@ pair<int, int> get_two_img_move(const vector<Mat>& warp_imgs, const vector<vecto
 	return make_pair(move_x, move_y);
 }
 
-void generateNewImage(vector<Mat>& warp_imgs, vector<int> img_order, vector<pair<int,int>> img_moves) {
+Mat generateNewImage(vector<Mat>& warp_imgs, vector<int> img_order, vector<pair<int,int>> img_moves) {
 	/* calculate image width & height */
 	int img_width = warp_imgs[img_order[0]].cols;
 	int y_bound = 100;
@@ -201,28 +201,5 @@ void generateNewImage(vector<Mat>& warp_imgs, vector<int> img_order, vector<pair
 		img_end_x = img_end_x + warp_imgs[img_order[i]].cols - round(img_moves[i].first);
 		img_start_y = img_start_y - round(img_moves[i].second);
 	}
-
-	/*save new image*/
-	//imwrite("result.jpg", result);
-
-	/* show new image */
-	imshow("final result", result);
-
-	//
-	/*
-	IplImage *final_img ;
-	img_width = new_img->width - s_img[serial[0]].img_warp->width/2 ;
-	img_height = new_img->height ;
-	final_img = cvCreateImage(cvSize(img_width,img_height) , IPL_DEPTH_8U , 4);
-	int move = s_img[serial[0]].img_warp->width/4;
-	for(int x = 0 ; x < final_img->width ; x++){
-	for(int y = 0 ; y < final_img->height ; y++){
-		CvScalar s = cvGet2D(new_img , y , x+move);
-		cvSet2D(final_img , y , x , s);
-	}
-	}
-	cvSaveImage( new_img_name.c_str() , final_img);
-	showImage(final_img , "final");
-	*/
-	return;
+	return result;
 }

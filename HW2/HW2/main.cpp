@@ -1,39 +1,199 @@
 #define _CRT_SECURE_NO_WARNINGS
-#include<opencv2/opencv.hpp>
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
+
+#include "ImGuiFileDialog.h"
+
+#include <opencv2/opencv.hpp>
 #include <ANN/ANN.h>
 #include "image_stitch.h"
 #include "sift.h"
 #include "warping.h"
 #include "exif.h"
+#include "texture.h"
+
 using namespace cv;
 using namespace std;
-int main()
-{
+
+
+int main(int argc,char* argv[]) {
+	vector<string> filenames;
+
+
+	srand(time(NULL));
+	glfwSetErrorCallback([](int error, const char* description) {fprintf(stderr, "Glfw Error %d: %s\n", error, description); });
+	if (!glfwInit())
+		return 1;
+
+	GLFWwindow* window = glfwCreateWindow(1280, 720, "Panorama", NULL, NULL);
+	if (window == NULL)
+		return 1;
+	glfwMakeContextCurrent(window);
+	glfwSwapInterval(1);
+	//glfwSetWindowSizeLimits(window, 1280, 720, GLFW_DONT_CARE, GLFW_DONT_CARE);
+	bool err = gladLoadGL() == 0;
+	if (err)
+	{
+		fprintf(stderr, "Failed to initialize OpenGL loader!\n");
+		return 1;
+	}
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+	ImGui::StyleColorsDark();
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init("#version 330");
+	ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".*,.png,.jpg,.PNG,.JPG", ".", 0);
+	vector<int> img_ids;
+	while (!glfwWindowShouldClose(window))
+	{
+		glfwPollEvents();
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+		//ImGui::SetNextItemWidth
+		ImGui::SetNextItemWidth(1280);
+		ImGui::Begin("test");
+		if (ImGui::Button("load image files")) {
+			ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".*,.png,.jpg,.PNG,.JPG", ".", 0);
+		}
+		// display
+		if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+		{
+			// action if OK
+			if (ImGuiFileDialog::Instance()->IsOk())
+			{
+				filenames.clear();
+				img_ids.clear();
+				map<string, string> selections = ImGuiFileDialog::Instance()->GetSelection();
+				for (const auto& selection : selections) {
+					filenames.push_back(selection.second);
+					Mat image = imread(selection.second);
+					img_ids.push_back(TextureFromMat(image));
+				}
+			}
+
+			// close
+			ImGuiFileDialog::Instance()->Close();
+		}
+		if (ImGui::Button("start image stitch") && !filenames.empty()) {
+			Mat result = image_stitch(filenames);
+			cout << "image row col: " << result.rows << " " << result.cols << endl;
+			imshow("panorama result", result);
+			imwrite("result.png", result);
+			cout << "complete" << endl;
+			//waitKey(0);
+		}
+		for (int i = 0; i < img_ids.size(); i++) {
+			ImGui::Image(ImTextureID(img_ids[i]), ImVec2(200, 200));
+			ImGui::SameLine();
+		}
+		ImGui::End();
+
+		ImGui::Render();
+		int display_w, display_h;
+		glfwMakeContextCurrent(window);
+		glfwGetFramebufferSize(window, &display_w, &display_h);
+		glViewport(0, 0, display_w, display_h);
+		glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+		glClear(GL_COLOR_BUFFER_BIT);
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		glfwMakeContextCurrent(window);
+		glfwSwapBuffers(window);
+		glUseProgram(0);
+		glColor3b(100, 100, 100);
+		glClear(GL_COLOR_BUFFER_BIT);
+		glFlush();
+	}
 
 
 	//vector<string> filenames =
 	//{ 
+	//	"./test_image/parrington/prtn08.jpg" ,
 	//	"./test_image/parrington/prtn01.jpg" ,
 	//	"./test_image/parrington/prtn02.jpg" ,
-	//	"./test_image/parrington/prtn00.jpg" ,
-	//	"./test_image/parrington/prtn17.jpg" ,
-	//	"./test_image/parrington/prtn04.jpg" ,
-	//	"./test_image/parrington/prtn16.jpg" ,
 	//	"./test_image/parrington/prtn03.jpg" ,
+	//	"./test_image/parrington/prtn04.jpg" ,
+	//	"./test_image/parrington/prtn05.jpg" ,
+	//	"./test_image/parrington/prtn06.jpg" ,
+	//	"./test_image/parrington/prtn17.jpg" ,
+	//	"./test_image/parrington/prtn00.jpg" ,
+	//	"./test_image/parrington/prtn09.jpg" ,
+	//	"./test_image/parrington/prtn10.jpg" ,
+	//	"./test_image/parrington/prtn11.jpg" ,
+	//	"./test_image/parrington/prtn12.jpg" ,
+	//	"./test_image/parrington/prtn13.jpg" ,
+	//	"./test_image/parrington/prtn14.jpg" ,
+	//	"./test_image/parrington/prtn15.jpg" ,
+	//	"./test_image/parrington/prtn16.jpg" ,
+	//	"./test_image/parrington/prtn07.jpg" ,
 	//};
 	// 
-	// 
+	 
 	
-	vector<string> filenames =
-	{
-		"./test_image/grail/grail00.jpg" ,
-		"./test_image/grail/grail01.jpg" ,
-		"./test_image/grail/grail02.jpg" ,
-		"./test_image/grail/grail03.jpg" ,
-		"./test_image/grail/grail04.jpg" ,
-		"./test_image/grail/grail16.jpg" ,
-		"./test_image/grail/grail17.jpg" ,
-	};
+	//vector<string> filenames =
+	//{
+	//	"./test_image/grail/grail04.jpg" ,
+	//	"./test_image/grail/grail02.jpg" ,
+	//	"./test_image/grail/grail01.jpg" ,
+	//	"./test_image/grail/grail16.jpg" ,
+	//	"./test_image/grail/grail15.jpg" ,
+	//	"./test_image/grail/grail17.jpg" ,
+	//	"./test_image/grail/grail00.jpg" ,
+	//	"./test_image/grail/grail03.jpg" ,
+	//};
+
+	//vector<string> filenames =
+	//{
+	//	"./my_pic/1/P_20220430_173030.jpg" ,
+	//	"./my_pic/1/P_20220430_173041.jpg" ,
+	//	"./my_pic/1/P_20220430_173035.jpg" ,
+	//	"./my_pic/1/P_20220430_173050.jpg" ,
+	//	"./my_pic/1/P_20220430_173046.jpg" ,
+	//	"./my_pic/1/P_20220430_173052.jpg" ,
+	//	"./my_pic/1/P_20220430_173038.jpg" ,
+	//	"./my_pic/1/P_20220430_173043.jpg" ,
+	//	"./my_pic/1/P_20220430_173106.jpg" ,
+	//	"./my_pic/1/P_20220430_173057.jpg" ,
+	//};
+
+	//	vector<string> filenames =
+	//{
+	//	"./my_pic/3/P_20211115_174223.jpg" ,
+	//	"./my_pic/3/P_20211115_174231.jpg" ,
+	//	"./my_pic/3/P_20211115_174238.jpg" ,
+	//	"./my_pic/3/P_20211115_174244.jpg" ,
+	//};
+
+	//vector<string> filenames =
+	//{
+	//	"./my_pic/2/DSC00020.jpg" ,
+	//	"./my_pic/2/DSC00021.jpg" ,
+	//	"./my_pic/2/DSC00022.jpg" ,
+	//	"./my_pic/2/DSC00023.jpg" ,
+	//	"./my_pic/2/DSC00024.jpg" ,
+	//	"./my_pic/2/DSC00025.jpg" ,
+	//	"./my_pic/2/DSC00026.jpg" ,
+	//	"./my_pic/2/DSC00027.jpg" ,
+	//	"./my_pic/2/DSC00028.jpg" ,
+	//	"./my_pic/2/DSC00029.jpg" ,
+	//	"./my_pic/2/DSC00030.jpg" ,
+	//	"./my_pic/2/DSC00031.jpg" ,
+	//	"./my_pic/2/DSC00032.jpg" ,
+	//	"./my_pic/2/DSC00033.jpg" ,
+	//	"./my_pic/2/DSC00034.jpg" ,
+	//	"./my_pic/2/DSC00035.jpg" ,
+	//	"./my_pic/2/DSC00036.jpg" ,
+	//	"./my_pic/2/DSC00037.jpg" ,
+	//	"./my_pic/2/DSC00038.jpg" ,
+	//	"./my_pic/2/DSC00039.jpg" ,
+	//	"./my_pic/2/DSC00040.jpg" ,
+	//};
+
 
 	//Mat img1 = imread("./Lenna.jpg");
 	//Mat img2 = imread("./Lenna_rotate_scale.png");
@@ -47,9 +207,8 @@ int main()
 	//Mat result = draw_matches(img1, img2, fps1, fps2, matches);
 	//imshow("match", result);
 
-	image_stitch(filenames);
-	cout << "complete" << endl;
-	waitKey(0);
+
+	
 	return 0;
 }
 

@@ -6,6 +6,20 @@ Mat image_stitch(vector<string> filenames) {
 	vector<Mat> imgs(img_count);
 	for (int i = 0; i < filenames.size(); i++) {
 		imgs[i] = imread(filenames[i]);
+		int new_rows, new_cols;
+		if (imgs[i].cols > imgs[i].rows) {
+			new_rows = 500 * imgs[i].rows / imgs[i].cols;
+			new_cols = 500;
+		}
+		else if (imgs[i].cols < imgs[i].rows) {
+			new_cols = 500 * imgs[i].cols / imgs[i].rows;
+			new_rows = 500;
+		}
+		else {
+			new_rows = 500;
+			new_cols = 500;
+		}
+		resize(imgs[i], imgs[i],Size(new_cols, new_rows));
 	}
 	vector<vector<FeaturePoint>> img_fps_list(img_count);
 	for (int i = 0; i < img_count; i++) {
@@ -42,7 +56,7 @@ Mat image_stitch(vector<string> filenames) {
 	}
 	cout << endl;
 
-	generateNewImage(warp_imgs, img_order,img_moves);
+	result = generateNewImage(warp_imgs, img_order,img_moves);
 	//Mat match_result = draw_matches2(warp_imgs[0], warp_imgs[1], img_fps_list[0], img_fps_list[1]);
 	//imshow("match", match_result);
 	//imshow("feature point", draw_keypoints(imgs[1], img_fps_list[1],3));

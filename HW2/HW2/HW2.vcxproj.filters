@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="imgui_cpp">
+      <UniqueIdentifier>{2391beb0-5eb4-4ebd-8854-f95a9f47f396}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="OpenGL">
+      <UniqueIdentifier>{56c85d6d-4e74-454b-aed8-65685c894276}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -35,6 +41,36 @@
     </ClCompile>
     <ClCompile Include="exif.cpp">
       <Filter>資源檔</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui_cpp\imgui.cpp">
+      <Filter>imgui_cpp</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui_cpp\imgui_demo.cpp">
+      <Filter>imgui_cpp</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui_cpp\imgui_draw.cpp">
+      <Filter>imgui_cpp</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui_cpp\imgui_impl_glfw.cpp">
+      <Filter>imgui_cpp</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui_cpp\imgui_impl_opengl3.cpp">
+      <Filter>imgui_cpp</Filter>
+    </ClCompile>
+    <ClCompile Include="glad.c">
+      <Filter>OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui_cpp\ImGuiFileDialog.cpp">
+      <Filter>imgui_cpp</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui_cpp\imgui_tables.cpp">
+      <Filter>imgui_cpp</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui_cpp\imgui_widgets.cpp">
+      <Filter>imgui_cpp</Filter>
+    </ClCompile>
+    <ClCompile Include="texture.cpp">
+      <Filter>OpenGL</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -64,6 +100,9 @@
     </ClInclude>
     <ClInclude Include="exif.h">
       <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="texture.h">
+      <Filter>OpenGL</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
