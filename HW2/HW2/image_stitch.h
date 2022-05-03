@@ -10,6 +10,6 @@
 using namespace std;
 using namespace cv;
 
-Mat image_stitch(vector<string> filenames);
+Mat image_stitch(vector<string> filenames,int limit_size = 500);
 
 #endif // !_IMAGE_STITCH_

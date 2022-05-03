@@ -22,6 +22,24 @@
 using namespace cv;
 using namespace std;
 
+void limit_img_size(Mat& img, int limit_size) {
+	if (img.rows < limit_size && img.cols < limit_size) return;
+	int new_rows, new_cols;
+	if (img.cols > img.rows) {
+		new_rows = limit_size * img.rows / img.cols;
+		new_cols = limit_size;
+	}
+	else if (img.cols < img.rows) {
+		new_cols = limit_size * img.cols / img.rows;
+		new_rows = limit_size;
+	}
+	else {
+		new_rows = limit_size;
+		new_cols = limit_size;
+	}
+	resize(img, img, Size(new_cols, new_rows));
+}
+
 
 int main(int argc,char* argv[]) {
 	vector<string> filenames;
@@ -45,8 +63,9 @@ int main(int argc,char* argv[]) {
 	if (!glfwInit())
 		return 1;
 
-	GLFWwindow* window = glfwCreateWindow(1280, 720, "Panorama", NULL, NULL);
-	int main_window_width = 1280, main_window_height = 720;
+	int default_width = 1280, default_height = 800;
+	GLFWwindow* window = glfwCreateWindow(default_width, default_height, "Panorama", NULL, NULL);
+	int main_window_width = default_width, main_window_height = default_height;
 	if (window == NULL)
 		return 1;
 	glfwMakeContextCurrent(window);
@@ -67,6 +86,7 @@ int main(int argc,char* argv[]) {
 	ImGui_ImplOpenGL3_Init("#version 330");
 	//ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".*,.png,.jpg,.PNG,.JPG", ".", 0);
 	vector<int> img_ids;
+	vector<Mat> img_show;
 	//ImGui::SetWindowFontScale(1.8f);
 	while (!glfwWindowShouldClose(window))
 	{
@@ -102,11 +122,13 @@ int main(int argc,char* argv[]) {
 			{
 				if (ImGui::MenuItem("Load image files"))
 				{
-					ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".*,.png,.jpg,.PNG,.JPG", ".", 0);
+					ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose Images to Open", ".*,.png,.jpg,.PNG,.JPG", ".", 0);
 				}
 				if (ImGui::MenuItem("Save result to file"))
 				{
-
+					if (!result.empty()) {
+						ImGuiFileDialog::Instance()->OpenDialog("ChooseFileSave", "Save File as", ".png,.jpg,.PNG,.JPG", ".", 0);
+					}
 				}
 				ImGui::EndMenu();
 			}
@@ -114,40 +136,50 @@ int main(int argc,char* argv[]) {
 			ImGui::EndMainMenuBar();
 		}
 
-		// display
 		if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
 		{
-			// action if OK
 			if (ImGuiFileDialog::Instance()->IsOk())
 			{
 				filenames.clear();
 				img_ids.clear();
+				img_show.clear();
 				map<string, string> selections = ImGuiFileDialog::Instance()->GetSelection();
 				for (const auto& selection : selections) {
 					filenames.push_back(selection.second);
 					Mat image = imread(selection.second);
+					limit_img_size(image,300);
+					cout << image.cols << " " << image.rows << endl;
 					img_ids.push_back(TextureFromMat(image));
+					img_show.push_back(image);
 				}
 			}
-
-			// close
 			ImGuiFileDialog::Instance()->Close();
 		}
 
-
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 1.0f));
-		ImVec2 scrolling_child_size = ImVec2(0, ImGui::GetFrameHeightWithSpacing() * 7 + 30);
-		ImGui::BeginChild("scrolling", scrolling_child_size, true, ImGuiWindowFlags_HorizontalScrollbar);
-		for (int i = 0; i < img_ids.size(); i++) {
-			ImGui::Image(ImTextureID(img_ids[i]), ImVec2(200, 200));
-			ImGui::SameLine();
+		if (ImGuiFileDialog::Instance()->Display("ChooseFileSave"))
+		{
+			if (ImGuiFileDialog::Instance()->IsOk())
+			{
+				imwrite(ImGuiFileDialog::Instance()->GetFilePathName(), result);
+			}
+			ImGuiFileDialog::Instance()->Close();
 		}
-		float scroll_x = ImGui::GetScrollX();
-		float scroll_max_x = ImGui::GetScrollMaxX();
-		ImGui::EndChild();
+		
 
-		ImGui::NewLine();
+		{
+			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 1.0f));
+			ImVec2 scrolling_child_size = ImVec2(0,320);
+			ImGui::BeginChild("input_scrolling", scrolling_child_size, true, ImGuiWindowFlags_HorizontalScrollbar);
+			for (int i = 0; i < img_ids.size(); i++) {
+				ImGui::Image(ImTextureID(img_ids[i]), ImVec2(img_show[i].cols, img_show[i].rows));
+				ImGui::SameLine();
+			}
+			float scroll_x = ImGui::GetScrollX();
+			float scroll_max_x = ImGui::GetScrollMaxX();
+			ImGui::EndChild();
+		}
+
 		if (filenames.size() > 0) {
 			if (ImGui::Button("start image stitch",ImVec2(main_window_width,50))) {
 				result = image_stitch(filenames);
@@ -156,12 +188,19 @@ int main(int argc,char* argv[]) {
 				imwrite("result.png", result);
 				cout << "complete" << endl;
 				result_img_id = TextureFromMat(result);
-				//waitKey(0);
 			}
 		}
 
-		if (!result.empty()) {
+
+		if (!result.empty()) {	
+			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 1.0f));
+			ImVec2 scrolling_child_size = ImVec2(0, 0);
+			ImGui::BeginChild("output_scrolling", scrolling_child_size, true, ImGuiWindowFlags_HorizontalScrollbar);
 			ImGui::Image(ImTextureID(result_img_id), ImVec2(result.cols, result.rows));
+			float scroll_x = ImGui::GetScrollX();
+			float scroll_max_x = ImGui::GetScrollMaxX();
+			ImGui::EndChild();
 		}
 		
 
@@ -169,9 +208,6 @@ int main(int argc,char* argv[]) {
 
 		ImGui::End();
 
-
-
-		ImGui::ShowDemoWindow();
 
 		ImGui::Render();
 		int display_w, display_h;

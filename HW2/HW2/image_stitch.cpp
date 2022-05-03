@@ -1,6 +1,6 @@
 #include "image_stitch.h"
 
-Mat image_stitch(vector<string> filenames) {
+Mat image_stitch(vector<string> filenames,int limit_size) {
 	Mat result;
 	int img_count = filenames.size();
 	if (img_count == 0) return result;
@@ -11,16 +11,16 @@ Mat image_stitch(vector<string> filenames) {
 		imgs[i] = imread(filenames[i]);
 		int new_rows, new_cols;
 		if (imgs[i].cols > imgs[i].rows) {
-			new_rows = 500 * imgs[i].rows / imgs[i].cols;
-			new_cols = 500;
+			new_rows = limit_size * imgs[i].rows / imgs[i].cols;
+			new_cols = limit_size;
 		}
 		else if (imgs[i].cols < imgs[i].rows) {
-			new_cols = 500 * imgs[i].cols / imgs[i].rows;
-			new_rows = 500;
+			new_cols = limit_size * imgs[i].cols / imgs[i].rows;
+			new_rows = limit_size;
 		}
 		else {
-			new_rows = 500;
-			new_cols = 500;
+			new_rows = limit_size;
+			new_cols = limit_size;
 		}
 		resize(imgs[i], imgs[i],Size(new_cols, new_rows));
 	}
