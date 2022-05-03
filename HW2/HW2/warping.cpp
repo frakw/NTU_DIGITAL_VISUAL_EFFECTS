@@ -1,6 +1,6 @@
 #include "warping.h"
-
-
+using namespace std;
+using namespace cv;
 Mat cylindrical_warping(const Mat& input,vector<FeaturePoint>& feat, double f) {
     Mat dst,mask;
     Mat result(input.rows, input.cols, input.type(), Scalar::all(0));

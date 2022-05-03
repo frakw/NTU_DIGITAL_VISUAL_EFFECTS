@@ -1,4 +1,6 @@
 #include "combine.h"
+using namespace std;
+using namespace cv;
 //假設圖片由左而右
 int get_right_img_index(const Mat& img, const vector<FeaturePoint>& img_fps,int img_count) {
 	vector<int> macth_count(img_count);

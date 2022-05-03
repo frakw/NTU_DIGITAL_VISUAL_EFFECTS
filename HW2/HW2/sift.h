@@ -12,24 +12,23 @@
 #include "sift_define.h"
 #include "feature_point.h"
 #include "match_info.h"
-using namespace std;
-using namespace cv;
 
-vector<FeaturePoint> SIFT(Mat img);
+
+std::vector<FeaturePoint> SIFT(cv::Mat img);
 
 std::vector<std::pair<int, int>> find_keypoint_matches(std::vector<FeaturePoint>& a,
 	std::vector<FeaturePoint>& b,
 	float thresh_relative = 0.7f,
 	float thresh_absolute = 350.0f);
 
-Mat draw_keypoints(const Mat& target, vector<FeaturePoint>& fps, int size);
+cv::Mat draw_keypoints(const cv::Mat& target, std::vector<FeaturePoint>& fps, int size);
 
-Mat draw_matches(const Mat& a, const Mat& b, std::vector<FeaturePoint>& kps_a,
+cv::Mat draw_matches(const cv::Mat& a, const cv::Mat& b, std::vector<FeaturePoint>& kps_a,
 	std::vector<FeaturePoint>& kps_b);
 
-Mat draw_matches2(const Mat& a, const Mat& b, std::vector<FeaturePoint>& kps_a,
+cv::Mat draw_matches2(const cv::Mat& a, const cv::Mat& b, std::vector<FeaturePoint>& kps_a,
 	std::vector<FeaturePoint>& kps_b);
 
-void featureMatch(vector< vector<FeaturePoint> >& img_fps_list);
+void featureMatch(std::vector< std::vector<FeaturePoint> >& img_fps_list);
 
 #endif

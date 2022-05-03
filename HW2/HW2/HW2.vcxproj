@@ -158,6 +158,7 @@
     <ClCompile Include="blend.cpp" />
     <ClCompile Include="combine.cpp" />
     <ClCompile Include="glad.c" />
+    <ClCompile Include="gui.cpp" />
     <ClCompile Include="image_stitch.cpp" />
     <ClCompile Include="imgui_cpp\imgui.cpp" />
     <ClCompile Include="imgui_cpp\ImGuiFileDialog.cpp" />
@@ -175,8 +176,8 @@
   <ItemGroup>
     <ClInclude Include="blend.h" />
     <ClInclude Include="combine.h" />
-    <ClInclude Include="exif.h" />
     <ClInclude Include="feature_point.h" />
+    <ClInclude Include="gui.h" />
     <ClInclude Include="image_stitch.h" />
     <ClInclude Include="match_info.h" />
     <ClInclude Include="sift.h" />

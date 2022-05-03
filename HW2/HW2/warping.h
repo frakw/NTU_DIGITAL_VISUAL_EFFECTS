@@ -6,11 +6,9 @@
 #include <iostream>
 #include <vector>
 #include "feature_point.h"
-using namespace std;
-using namespace cv;
 
 //Mat cylindrical_warping(const Mat& input, double focal_length);
-Mat cylindrical_warping(const Mat& input, vector<FeaturePoint>& feat, double f);
-Mat cylindrical_warping2(const Mat& input, vector<FeaturePoint>& feat);
+cv::Mat cylindrical_warping(const cv::Mat& input, std::vector<FeaturePoint>& feat, double f);
+cv::Mat cylindrical_warping2(const cv::Mat& input, std::vector<FeaturePoint>& feat);
 
 #endif

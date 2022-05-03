@@ -69,6 +69,9 @@
     <ClCompile Include="texture.cpp">
       <Filter>OpenGL</Filter>
     </ClCompile>
+    <ClCompile Include="gui.cpp">
+      <Filter>資源檔</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sift_define.h">
@@ -95,11 +98,11 @@
     <ClInclude Include="combine.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="exif.h">
-      <Filter>標頭檔</Filter>
-    </ClInclude>
     <ClInclude Include="texture.h">
       <Filter>OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="gui.h">
+      <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

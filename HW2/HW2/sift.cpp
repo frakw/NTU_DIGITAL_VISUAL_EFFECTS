@@ -1,4 +1,6 @@
 ﻿#include "sift.h"
+using namespace std;
+using namespace cv;
 auto get_pixel = [&](const Mat& mat, int row, int col) -> float {
 	if (col < 0) { col = 0; }
 	else if (col >= mat.cols) { col = mat.cols - 1; }

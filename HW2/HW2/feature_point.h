@@ -1,7 +1,6 @@
 #ifndef _FEATURE_POINT_H_
 #define _FEATURE_POINT_H_
 #include <vector>
-using namespace std;
 //class FeaturePoint {
 //	
 //public:
@@ -58,7 +57,7 @@ public:
 		dy = (y + offset_y) * pow(2.0, octave);
 	}
 
-	vector<int> best_match;
+	std::vector<int> best_match;
 
 	FeaturePoint& operator=(const FeaturePoint& src) {
 		this->dx = src.dx;

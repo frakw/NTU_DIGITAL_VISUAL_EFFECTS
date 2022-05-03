@@ -1,6 +1,7 @@
 #include "image_stitch.h"
-
-Mat image_stitch(vector<string> filenames,int limit_size) {
+using namespace std;
+using namespace cv;
+Mat image_stitch(vector<string> filenames, int limit_size) {
 	Mat result;
 	int img_count = filenames.size();
 	if (img_count == 0) return result;
@@ -22,7 +23,7 @@ Mat image_stitch(vector<string> filenames,int limit_size) {
 			new_rows = limit_size;
 			new_cols = limit_size;
 		}
-		resize(imgs[i], imgs[i],Size(new_cols, new_rows));
+		resize(imgs[i], imgs[i], Size(new_cols, new_rows));
 	}
 	vector<vector<FeaturePoint>> img_fps_list(img_count);
 	for (int i = 0; i < img_count; i++) {
@@ -59,9 +60,21 @@ Mat image_stitch(vector<string> filenames,int limit_size) {
 	}
 	cout << endl;
 
-	result = generateNewImage(warp_imgs, img_order,img_moves);
+	result = generateNewImage(warp_imgs, img_order, img_moves);
 	//Mat match_result = draw_matches2(warp_imgs[0], warp_imgs[1], img_fps_list[0], img_fps_list[1]);
 	//imshow("match", match_result);
 	//imshow("feature point", draw_keypoints(imgs[1], img_fps_list[1],3));
+
+
+	//double angle = atan((upb - downb) / (upa - downa)) * 180 / 3.14159;
+	//if (upa == downa)
+	//{
+	//	angle = 0;
+	//}
+
+	//cv::Point2f pt(result.cols / 2, result.rows / 2);
+	//cv::Mat r = cv::getRotationMatrix2D(pt, angle, 1.0);
+	//cv::warpAffine(result, rotateImg, r, cv::Size(result.cols, result.rows));
+
 	return result;
 }

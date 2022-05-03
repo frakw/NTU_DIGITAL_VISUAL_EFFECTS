@@ -7,9 +7,10 @@
 #include "sift.h"
 #include "warping.h"
 #include "combine.h"
-using namespace std;
-using namespace cv;
 
-Mat image_stitch(vector<string> filenames,int limit_size = 500);
+
+
+
+cv::Mat image_stitch(std::vector<std::string> filenames, int limit_size = 500);
 
 #endif // !_IMAGE_STITCH_
