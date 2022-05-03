@@ -1,18 +1,22 @@
-#define _CRT_SECURE_NO_WARNINGS
+﻿#define _CRT_SECURE_NO_WARNINGS
+#include <iostream>
+#include <string>
+#include <fstream>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <opencv2/opencv.hpp>
+
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 
 #include "ImGuiFileDialog.h"
 
-#include <opencv2/opencv.hpp>
 #include <ANN/ANN.h>
+
 #include "image_stitch.h"
 #include "sift.h"
 #include "warping.h"
-#include "exif.h"
 #include "texture.h"
 
 using namespace cv;
@@ -21,7 +25,20 @@ using namespace std;
 
 int main(int argc,char* argv[]) {
 	vector<string> filenames;
-
+	Mat result;
+	GLuint result_img_id;
+	if (argc > 1) {
+		fstream img_list_file(argv[1]);
+		string line;
+		while (getline(img_list_file, line)) {
+			if (line.empty()) continue;
+			filenames.push_back(line);
+		}
+		result = image_stitch(filenames);
+		imshow("panorama result", result);
+		imwrite("result.png", result);
+		return 0;
+	}
 
 	srand(time(NULL));
 	glfwSetErrorCallback([](int error, const char* description) {fprintf(stderr, "Glfw Error %d: %s\n", error, description); });
@@ -29,6 +46,7 @@ int main(int argc,char* argv[]) {
 		return 1;
 
 	GLFWwindow* window = glfwCreateWindow(1280, 720, "Panorama", NULL, NULL);
+	int main_window_width = 1280, main_window_height = 720;
 	if (window == NULL)
 		return 1;
 	glfwMakeContextCurrent(window);
@@ -47,20 +65,55 @@ int main(int argc,char* argv[]) {
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 330");
-	ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".*,.png,.jpg,.PNG,.JPG", ".", 0);
+	//ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".*,.png,.jpg,.PNG,.JPG", ".", 0);
 	vector<int> img_ids;
+	//ImGui::SetWindowFontScale(1.8f);
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
+
+
+		glfwGetWindowSize(window, &main_window_width, &main_window_height);
+		ImGui::SetNextWindowPos(ImVec2(0, 0), 0, ImVec2(0, 0));
+		ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, io.DisplaySize.y));
+		ImGui::SetNextWindowBgAlpha(0);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
+		ImGui::Begin("background", NULL, ImGuiWindowFlags_NoMove |
+			ImGuiWindowFlags_NoTitleBar |
+			ImGuiWindowFlags_NoBringToFrontOnFocus |
+			//ImGuiWindowFlags_NoInputs |
+			ImGuiWindowFlags_NoCollapse |
+			ImGuiWindowFlags_NoResize);
+			//ImGuiWindowFlags_NoScrollbar);
+
 		//ImGui::SetNextItemWidth
-		ImGui::SetNextItemWidth(1280);
-		ImGui::Begin("test");
-		if (ImGui::Button("load image files")) {
-			ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".*,.png,.jpg,.PNG,.JPG", ".", 0);
+		//ImGui::SetNextItemWidth(1280);
+		//ImGui::Begin("test");
+
+		ImGui::SetNextWindowContentSize(ImVec2(main_window_width, main_window_height));
+
+		if (ImGui::BeginMainMenuBar())
+		{
+			if (ImGui::BeginMenu("File"))
+			{
+				if (ImGui::MenuItem("Load image files"))
+				{
+					ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".*,.png,.jpg,.PNG,.JPG", ".", 0);
+				}
+				if (ImGui::MenuItem("Save result to file"))
+				{
+
+				}
+				ImGui::EndMenu();
+			}
+
+			ImGui::EndMainMenuBar();
 		}
+
 		// display
 		if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
 		{
@@ -80,19 +133,45 @@ int main(int argc,char* argv[]) {
 			// close
 			ImGuiFileDialog::Instance()->Close();
 		}
-		if (ImGui::Button("start image stitch") && !filenames.empty()) {
-			Mat result = image_stitch(filenames);
-			cout << "image row col: " << result.rows << " " << result.cols << endl;
-			imshow("panorama result", result);
-			imwrite("result.png", result);
-			cout << "complete" << endl;
-			//waitKey(0);
-		}
+
+
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 1.0f));
+		ImVec2 scrolling_child_size = ImVec2(0, ImGui::GetFrameHeightWithSpacing() * 7 + 30);
+		ImGui::BeginChild("scrolling", scrolling_child_size, true, ImGuiWindowFlags_HorizontalScrollbar);
 		for (int i = 0; i < img_ids.size(); i++) {
 			ImGui::Image(ImTextureID(img_ids[i]), ImVec2(200, 200));
 			ImGui::SameLine();
 		}
+		float scroll_x = ImGui::GetScrollX();
+		float scroll_max_x = ImGui::GetScrollMaxX();
+		ImGui::EndChild();
+
+		ImGui::NewLine();
+		if (filenames.size() > 0) {
+			if (ImGui::Button("start image stitch",ImVec2(main_window_width,50))) {
+				result = image_stitch(filenames);
+				cout << "image row col: " << result.rows << " " << result.cols << endl;
+				imshow("panorama result", result);
+				imwrite("result.png", result);
+				cout << "complete" << endl;
+				result_img_id = TextureFromMat(result);
+				//waitKey(0);
+			}
+		}
+
+		if (!result.empty()) {
+			ImGui::Image(ImTextureID(result_img_id), ImVec2(result.cols, result.rows));
+		}
+		
+
+
+
 		ImGui::End();
+
+
+
+		ImGui::ShowDemoWindow();
 
 		ImGui::Render();
 		int display_w, display_h;
@@ -111,136 +190,6 @@ int main(int argc,char* argv[]) {
 	}
 
 
-	//vector<string> filenames =
-	//{ 
-	//	"./test_image/parrington/prtn08.jpg" ,
-	//	"./test_image/parrington/prtn01.jpg" ,
-	//	"./test_image/parrington/prtn02.jpg" ,
-	//	"./test_image/parrington/prtn03.jpg" ,
-	//	"./test_image/parrington/prtn04.jpg" ,
-	//	"./test_image/parrington/prtn05.jpg" ,
-	//	"./test_image/parrington/prtn06.jpg" ,
-	//	"./test_image/parrington/prtn17.jpg" ,
-	//	"./test_image/parrington/prtn00.jpg" ,
-	//	"./test_image/parrington/prtn09.jpg" ,
-	//	"./test_image/parrington/prtn10.jpg" ,
-	//	"./test_image/parrington/prtn11.jpg" ,
-	//	"./test_image/parrington/prtn12.jpg" ,
-	//	"./test_image/parrington/prtn13.jpg" ,
-	//	"./test_image/parrington/prtn14.jpg" ,
-	//	"./test_image/parrington/prtn15.jpg" ,
-	//	"./test_image/parrington/prtn16.jpg" ,
-	//	"./test_image/parrington/prtn07.jpg" ,
-	//};
-	// 
-	 
-	
-	//vector<string> filenames =
-	//{
-	//	"./test_image/grail/grail04.jpg" ,
-	//	"./test_image/grail/grail02.jpg" ,
-	//	"./test_image/grail/grail01.jpg" ,
-	//	"./test_image/grail/grail16.jpg" ,
-	//	"./test_image/grail/grail15.jpg" ,
-	//	"./test_image/grail/grail17.jpg" ,
-	//	"./test_image/grail/grail00.jpg" ,
-	//	"./test_image/grail/grail03.jpg" ,
-	//};
-
-	//vector<string> filenames =
-	//{
-	//	"./my_pic/1/P_20220430_173030.jpg" ,
-	//	"./my_pic/1/P_20220430_173041.jpg" ,
-	//	"./my_pic/1/P_20220430_173035.jpg" ,
-	//	"./my_pic/1/P_20220430_173050.jpg" ,
-	//	"./my_pic/1/P_20220430_173046.jpg" ,
-	//	"./my_pic/1/P_20220430_173052.jpg" ,
-	//	"./my_pic/1/P_20220430_173038.jpg" ,
-	//	"./my_pic/1/P_20220430_173043.jpg" ,
-	//	"./my_pic/1/P_20220430_173106.jpg" ,
-	//	"./my_pic/1/P_20220430_173057.jpg" ,
-	//};
-
-	//	vector<string> filenames =
-	//{
-	//	"./my_pic/3/P_20211115_174223.jpg" ,
-	//	"./my_pic/3/P_20211115_174231.jpg" ,
-	//	"./my_pic/3/P_20211115_174238.jpg" ,
-	//	"./my_pic/3/P_20211115_174244.jpg" ,
-	//};
-
-	//vector<string> filenames =
-	//{
-	//	"./my_pic/2/DSC00020.jpg" ,
-	//	"./my_pic/2/DSC00021.jpg" ,
-	//	"./my_pic/2/DSC00022.jpg" ,
-	//	"./my_pic/2/DSC00023.jpg" ,
-	//	"./my_pic/2/DSC00024.jpg" ,
-	//	"./my_pic/2/DSC00025.jpg" ,
-	//	"./my_pic/2/DSC00026.jpg" ,
-	//	"./my_pic/2/DSC00027.jpg" ,
-	//	"./my_pic/2/DSC00028.jpg" ,
-	//	"./my_pic/2/DSC00029.jpg" ,
-	//	"./my_pic/2/DSC00030.jpg" ,
-	//	"./my_pic/2/DSC00031.jpg" ,
-	//	"./my_pic/2/DSC00032.jpg" ,
-	//	"./my_pic/2/DSC00033.jpg" ,
-	//	"./my_pic/2/DSC00034.jpg" ,
-	//	"./my_pic/2/DSC00035.jpg" ,
-	//	"./my_pic/2/DSC00036.jpg" ,
-	//	"./my_pic/2/DSC00037.jpg" ,
-	//	"./my_pic/2/DSC00038.jpg" ,
-	//	"./my_pic/2/DSC00039.jpg" ,
-	//	"./my_pic/2/DSC00040.jpg" ,
-	//};
-
-
-	//Mat img1 = imread("./Lenna.jpg");
-	//Mat img2 = imread("./Lenna_rotate_scale.png");
-	//Mat img = imread("./Lenna_rotate_scale.png");
-	//Mat img = imread("./Lenna_rotate_scale1.png");
-	//GaussianBlur(img, img, Size(3, 3), 1.6f, 1.6f);
-	//vector<FeaturePoint> fps1 = SIFT(img1);
-	//vector<FeaturePoint> fps2 = SIFT(img2);
-
-	//std::vector<std::pair<int, int>> matches = find_keypoint_matches(fps1, fps2);
-	//Mat result = draw_matches(img1, img2, fps1, fps2, matches);
-	//imshow("match", result);
-
-
 	
 	return 0;
 }
-
-
-/*
-
-	//FILE* fp = fopen("./square00.jpg", "rb");
-	//fseek(fp, 0, SEEK_END);
-	//unsigned long fsize = ftell(fp);
-	//rewind(fp);
-	//unsigned char* buf = new unsigned char[fsize];
-	//if (fread(buf, 1, fsize, fp) != fsize) {
-	//	printf("Can't read file.\n");
-	//	delete[] buf;
-	//	return -2;
-	//}
-	//fclose(fp);
-
-	//// Parse EXIF
-	//easyexif::EXIFInfo result;
-	//int code = result.parseFrom(buf, fsize);
-	//delete[] buf;
-	//if (code) {
-	//	printf("Error parsing EXIF: code %d\n", code);
-	//	return -3;
-	//}
-	//cout << "focal len: " << result.FocalLengthIn35mm << endl;
-	Mat img1 = imread("./P_20220430_174302.jpg");
-	resize(img1, img1, Size(img1.cols / 3, img1.rows / 3));
-	double f = ((int)img1.rows / 10) * 10;
-	vector<FeaturePoint> tmp;
-	imshow("warping", cylindrical_warping2(img1, tmp, f));
-	waitKey(0);
-	return 0;
-*/

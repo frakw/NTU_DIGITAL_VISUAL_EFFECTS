@@ -1,8 +1,11 @@
 #include "image_stitch.h"
 
 Mat image_stitch(vector<string> filenames) {
-	int img_count = filenames.size();
 	Mat result;
+	int img_count = filenames.size();
+	if (img_count == 0) return result;
+	else if (img_count == 1) return imread(filenames[0]);
+
 	vector<Mat> imgs(img_count);
 	for (int i = 0; i < filenames.size(); i++) {
 		imgs[i] = imread(filenames[i]);

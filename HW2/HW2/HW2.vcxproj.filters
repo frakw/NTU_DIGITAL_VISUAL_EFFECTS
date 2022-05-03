@@ -39,9 +39,6 @@
     <ClCompile Include="combine.cpp">
       <Filter>資源檔</Filter>
     </ClCompile>
-    <ClCompile Include="exif.cpp">
-      <Filter>資源檔</Filter>
-    </ClCompile>
     <ClCompile Include="imgui_cpp\imgui.cpp">
       <Filter>imgui_cpp</Filter>
     </ClCompile>

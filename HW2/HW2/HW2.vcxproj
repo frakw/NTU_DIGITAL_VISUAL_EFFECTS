@@ -157,7 +157,6 @@
   <ItemGroup>
     <ClCompile Include="blend.cpp" />
     <ClCompile Include="combine.cpp" />
-    <ClCompile Include="exif.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="image_stitch.cpp" />
     <ClCompile Include="imgui_cpp\imgui.cpp" />
