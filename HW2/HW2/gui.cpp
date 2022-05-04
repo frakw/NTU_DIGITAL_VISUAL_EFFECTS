@@ -157,7 +157,7 @@ void run_gui() {
 
 		if (filenames.size() > 0) {
 			if (ImGui::Button("start image stitch", ImVec2(main_window_width, 50))) {
-				result = image_stitch(filenames);
+				result = image_stitch(filenames,500);
 				//imshow("panorama result", result);
 				//imwrite("result.png", result);
 				result_img_id = TextureFromMat(result);

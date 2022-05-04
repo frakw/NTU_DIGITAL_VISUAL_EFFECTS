@@ -10,23 +10,27 @@ Mat image_stitch(vector<string> filenames, int limit_size) {
 	else if (img_count == 1) return imread(filenames[0]);
 
 	vector<Mat> imgs(img_count);
+	
 	for (int i = 0; i < filenames.size(); i++) {
 		imgs[i] = imread(filenames[i]);
-		int new_rows, new_cols;
-		if (imgs[i].cols > imgs[i].rows) {
-			new_rows = limit_size * imgs[i].rows / imgs[i].cols;
-			new_cols = limit_size;
+		if (limit_size != -1) {
+			int new_rows, new_cols;
+			if (imgs[i].cols > imgs[i].rows) {
+				new_rows = limit_size * imgs[i].rows / imgs[i].cols;
+				new_cols = limit_size;
+			}
+			else if (imgs[i].cols < imgs[i].rows) {
+				new_cols = limit_size * imgs[i].cols / imgs[i].rows;
+				new_rows = limit_size;
+			}
+			else {
+				new_rows = limit_size;
+				new_cols = limit_size;
+			}
+			resize(imgs[i], imgs[i], Size(new_cols, new_rows));
 		}
-		else if (imgs[i].cols < imgs[i].rows) {
-			new_cols = limit_size * imgs[i].cols / imgs[i].rows;
-			new_rows = limit_size;
-		}
-		else {
-			new_rows = limit_size;
-			new_cols = limit_size;
-		}
-		resize(imgs[i], imgs[i], Size(new_cols, new_rows));
 	}
+
 	vector<vector<FeaturePoint>> img_fps_list(img_count);
 	for (int i = 0; i < img_count; i++) {
 		cout << "running image" << i << " SIFT...\n";
