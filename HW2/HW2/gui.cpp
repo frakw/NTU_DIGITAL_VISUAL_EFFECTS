@@ -46,13 +46,15 @@ void run_gui() {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
-	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+	ImVec4 clear_color = ImVec4(35 / 255.0f, 39 / 255.0f, 42 / 255.0f, 1.00f);
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 330");
 	//ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".*,.png,.jpg,.PNG,.JPG", ".", 0);
 	vector<int> img_ids;
 	vector<Mat> img_show;
+	float show_scale = 1.0f;
+	float result_show_scale = 1.0f;
 	//ImGui::SetWindowFontScale(1.8f);
 	while (!glfwWindowShouldClose(window))
 	{
@@ -133,12 +135,20 @@ void run_gui() {
 
 
 		{
+			ImGui::NewLine();
+			if (ImGui::Button("reverse show")) {
+				reverse(img_ids.begin(), img_ids.end());
+				reverse(img_show.begin(), img_show.end());
+				reverse(filenames.begin(), filenames.end());
+			}
+			ImGui::SameLine();
+			ImGui::SliderFloat("show_scale",&show_scale,0.1f,3.0f);
 			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
 			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 1.0f));
 			ImVec2 scrolling_child_size = ImVec2(0, 320);
 			ImGui::BeginChild("input_scrolling", scrolling_child_size, true, ImGuiWindowFlags_HorizontalScrollbar);
 			for (int i = 0; i < img_ids.size(); i++) {
-				ImGui::Image(ImTextureID(img_ids[i]), ImVec2(img_show[i].cols, img_show[i].rows));
+				ImGui::Image(ImTextureID(img_ids[i]), ImVec2(img_show[i].cols * show_scale, img_show[i].rows * show_scale));
 				ImGui::SameLine();
 			}
 			float scroll_x = ImGui::GetScrollX();
@@ -159,21 +169,18 @@ void run_gui() {
 
 
 		if (!result.empty()) {
+			ImGui::SliderFloat("result_scale", &result_show_scale, 0.1f, 3.0f);
 			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
 			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 1.0f));
 			ImVec2 scrolling_child_size = ImVec2(0, 0);
 			ImGui::BeginChild("output_scrolling", scrolling_child_size, true, ImGuiWindowFlags_HorizontalScrollbar);
-			ImGui::Image(ImTextureID(result_img_id), ImVec2(result.cols, result.rows));
+			ImGui::Image(ImTextureID(result_img_id), ImVec2(result.cols* result_show_scale, result.rows* result_show_scale));
 			float scroll_x = ImGui::GetScrollX();
 			float scroll_max_x = ImGui::GetScrollMaxX();
 			ImGui::EndChild();
 		}
 
-
-
-
 		ImGui::End();
-
 
 		ImGui::Render();
 		int display_w, display_h;

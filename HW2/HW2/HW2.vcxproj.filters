@@ -30,9 +30,6 @@
     <ClCompile Include="image_stitch.cpp">
       <Filter>資源檔</Filter>
     </ClCompile>
-    <ClCompile Include="blend.cpp">
-      <Filter>資源檔</Filter>
-    </ClCompile>
     <ClCompile Include="warping.cpp">
       <Filter>資源檔</Filter>
     </ClCompile>
@@ -74,9 +71,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="sift_define.h">
-      <Filter>標頭檔</Filter>
-    </ClInclude>
     <ClInclude Include="sift.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
@@ -84,12 +78,6 @@
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="feature_point.h">
-      <Filter>標頭檔</Filter>
-    </ClInclude>
-    <ClInclude Include="match_info.h">
-      <Filter>標頭檔</Filter>
-    </ClInclude>
-    <ClInclude Include="blend.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="warping.h">

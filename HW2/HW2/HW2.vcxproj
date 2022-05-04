@@ -155,7 +155,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="blend.cpp" />
     <ClCompile Include="combine.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="gui.cpp" />
@@ -174,14 +173,11 @@
     <ClCompile Include="warping.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="blend.h" />
     <ClInclude Include="combine.h" />
     <ClInclude Include="feature_point.h" />
     <ClInclude Include="gui.h" />
     <ClInclude Include="image_stitch.h" />
-    <ClInclude Include="match_info.h" />
     <ClInclude Include="sift.h" />
-    <ClInclude Include="sift_define.h" />
     <ClInclude Include="texture.h" />
     <ClInclude Include="warping.h" />
   </ItemGroup>

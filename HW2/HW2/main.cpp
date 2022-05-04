@@ -4,12 +4,7 @@
 #include <fstream>
 #include <opencv2/opencv.hpp>
 
-
-#include "ImGuiFileDialog.h"
-
 #include "image_stitch.h"
-
-#include "texture.h"
 
 #include "gui.h"
 

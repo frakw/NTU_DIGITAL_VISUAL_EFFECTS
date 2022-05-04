@@ -9,26 +9,34 @@
 #include <utility>
 #include <algorithm>
 #include <ANN/ANN.h>
-#include "sift_define.h"
 #include "feature_point.h"
-#include "match_info.h"
+
+
+//defines
+#define SIFT_SIGMA 1.6f
+#define SIFT_INIT_SIGMA 0.5f
+//每層octave有幾個layer
+#define SIFT_INTERVALS 3
+#define SIFT_LAYER_PER_OCT  (SIFT_INTERVALS + 3)
+#define SIFT_DOG_LAYER_PER_OCT  (SIFT_LAYER_PER_OCT - 1)
+#define SIFT_C_EDGE 10
+#define SIFT_CONTR_THR 0.03f
+#define SIFT_IMG_BORDER 5
+#define SIFT_N_BINS  36
+#define parabola_interpolate(l, c, r) (0.5*((l)-(r))/((l)-2.0*(c)+(r))) 
+#define SIFT_ORI_SMOOTH_TIMES 2
+#define SIFT_DESCR_SCALE_ADJUST 3
+#define SIFT_DESCR_MAG_THR 0.2f
+#define SIFT_ORI_PEAK_RATIO 0.8f
+#define SIFT_ORI_SIG_FCTR 1.5f
+#define SIFT_ORI_RADIUS  (3 * SIFT_ORI_SIG_FCTR)
+#define SIFT_INT_DESCR_FCTR 512.f
+#define SIFT_LAMBDA_ORI  1.5f
+//
 
 
 std::vector<FeaturePoint> SIFT(cv::Mat img);
 
-std::vector<std::pair<int, int>> find_keypoint_matches(std::vector<FeaturePoint>& a,
-	std::vector<FeaturePoint>& b,
-	float thresh_relative = 0.7f,
-	float thresh_absolute = 350.0f);
-
-cv::Mat draw_keypoints(const cv::Mat& target, std::vector<FeaturePoint>& fps, int size);
-
-cv::Mat draw_matches(const cv::Mat& a, const cv::Mat& b, std::vector<FeaturePoint>& kps_a,
-	std::vector<FeaturePoint>& kps_b);
-
-cv::Mat draw_matches2(const cv::Mat& a, const cv::Mat& b, std::vector<FeaturePoint>& kps_a,
-	std::vector<FeaturePoint>& kps_b);
-
-void featureMatch(std::vector< std::vector<FeaturePoint> >& img_fps_list);
+void match_feature_points(std::vector< std::vector<FeaturePoint> >& img_fps_list);
 
 #endif

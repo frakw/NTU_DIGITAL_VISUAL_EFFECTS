@@ -8,9 +8,5 @@
 #include "warping.h"
 #include "combine.h"
 
-
-
-
 cv::Mat image_stitch(std::vector<std::string> filenames, int limit_size = 500);
-
 #endif // !_IMAGE_STITCH_
