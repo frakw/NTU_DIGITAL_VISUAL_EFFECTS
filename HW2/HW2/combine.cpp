@@ -150,8 +150,6 @@ Mat get_panorama(vector<Mat>& warp_imgs, vector<int> img_order, vector<pair<int,
 	int endy = starty + warp_imgs[img_order[0]].rows - 1;
 	Vec3b black(0, 0, 0);
 	for (int i = 1; i < warp_imgs.size(); i++) {
-		cout << img_moves[i].first << " ";
-		cout << img_moves[i].second << " " << endl;
 		for (int x = 0; x < warp_imgs[img_order[i]].cols; x++) {
 			for (int y = 0; y < warp_imgs[img_order[i]].rows; y++) {
 

@@ -95,7 +95,7 @@ void run_gui() {
 				if (ImGui::MenuItem("Save result to file"))
 				{
 					if (!result.empty()) {
-						ImGuiFileDialog::Instance()->OpenDialog("ChooseFileSave", "Save File as", ".png,.jpg,.PNG,.JPG", ".", 0);
+						ImGuiFileDialog::Instance()->OpenDialog("ChooseFileSave", "Save File as", ".png,.jpg,.PNG,.JPG", ".", 1);
 					}
 				}
 				ImGui::EndMenu();
@@ -116,7 +116,6 @@ void run_gui() {
 					filenames.push_back(selection.second);
 					Mat image = imread(selection.second);
 					limit_img_size(image, 300);
-					cout << image.cols << " " << image.rows << endl;
 					img_ids.push_back(TextureFromMat(image));
 					img_show.push_back(image);
 				}
@@ -159,10 +158,8 @@ void run_gui() {
 		if (filenames.size() > 0) {
 			if (ImGui::Button("start image stitch", ImVec2(main_window_width, 50))) {
 				result = image_stitch(filenames);
-				cout << "image row col: " << result.rows << " " << result.cols << endl;
-				imshow("panorama result", result);
-				imwrite("result.png", result);
-				cout << "complete" << endl;
+				//imshow("panorama result", result);
+				//imwrite("result.png", result);
 				result_img_id = TextureFromMat(result);
 			}
 		}
