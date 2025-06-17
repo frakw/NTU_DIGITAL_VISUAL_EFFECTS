@@ -1,2 +1,2 @@
 # NTU_DIGITAL_VISUAL_EFFECTS
- 數位視覺效果-莊永裕
+ 數位視覺效果-莊永裕 NTU VFX
